@@ -1,10 +1,12 @@
 import { NavLink } from 'react-router-dom';
-import { BarChart3, Target, Megaphone } from 'lucide-react';
+import { BarChart3, Target, Megaphone, Share2, Building2 } from 'lucide-react';
 
 const navItems = [
   { to: '/', label: 'Dashboard de Leads', icon: BarChart3 },
   { to: '/resultado-geral', label: 'Resultado Geral', icon: Target },
   { to: '/meta-campanhas', label: 'Meta - Campanhas', icon: Megaphone },
+  { to: '/distribuicao-anhanguera', label: 'Distribuição Anhanguera', icon: Building2 },
+  { to: '/distribuicao-sumare', label: 'Distribuição Sumaré', icon: Share2 },
 ];
 
 export function Sidebar() {

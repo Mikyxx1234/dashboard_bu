@@ -3,6 +3,8 @@ import { Layout } from './components/Layout';
 import { LeadsDashboard } from './pages/LeadsDashboard';
 import { CampanhasMeta } from './pages/CampanhasMeta';
 import { MetaCampanhas } from './pages/MetaCampanhas';
+import AnhangueraDashboard from './pages/AnhangueraDashboard';
+import SumareDashboard from './pages/SumareDashboard';
 
 export default function App() {
   return (
@@ -12,6 +14,8 @@ export default function App() {
           <Route index element={<LeadsDashboard />} />
           <Route path="resultado-geral" element={<CampanhasMeta />} />
           <Route path="meta-campanhas" element={<MetaCampanhas />} />
+          <Route path="distribuicao-anhanguera" element={<AnhangueraDashboard />} />
+          <Route path="distribuicao-sumare" element={<SumareDashboard />} />
         </Route>
       </Routes>
     </BrowserRouter>
