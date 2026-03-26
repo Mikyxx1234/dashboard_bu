@@ -1627,7 +1627,7 @@
       applyAuthenticatedConsultant();
       showDashboard();
       if (els.loginBtn) els.loginBtn.disabled = false;
-      fetchMetaFromSupabase();
+      await fetchMetaFromSupabase();
       fetchDashboardData();
     }
 
@@ -1649,7 +1649,7 @@
       showLogin();
     }
 
-    function restoreSession() {
+    async function restoreSession() {
       var urlParams = new URLSearchParams(window.location.search);
       var autoUser = urlParams.get('autouser');
       if (autoUser && CONSULTOR_PASSWORD_HASHES[autoUser]) {
@@ -1659,7 +1659,7 @@
         saveSession(autoUser);
         applyAuthenticatedConsultant();
         showDashboard();
-        fetchMetaFromSupabase();
+        await fetchMetaFromSupabase();
         fetchDashboardData();
         return;
       }
@@ -1675,7 +1675,7 @@
       state.selectedConsultant = state.isAdmin ? '' : consultor;
       applyAuthenticatedConsultant();
       showDashboard();
-      fetchMetaFromSupabase();
+      await fetchMetaFromSupabase();
       fetchDashboardData();
     }
 
