@@ -1,9 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Save, RefreshCw, AlertCircle, CheckCircle2, Target, CalendarRange, Zap, TrendingUp, Award, DollarSign } from 'lucide-react';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+const SUPABASE_URL = 'https://tufvduiaybogfhgausqj.supabase.co';
+const SUPABASE_ANON_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZnZkdWlheWJvZ2ZoZ2F1c3FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwOTUyNjksImV4cCI6MjA3MjY3MTI2OX0.o-rO2rm5uYtI-NDp5amFm9gkXcToJWjuHDJFkaOtYtQ';
+const SUPABASE_SERVICE_KEY =
+  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZnZkdWlheWJvZ2ZoZ2F1c3FqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA5NTI2OSwiZXhwIjoyMDcyNjcxMjY5fQ.dhfyYnXfPXHsly0YAmpUP7yS7U6CB0qkyihMPlRMfPg';
 
 const readHeaders = {
   apikey: SUPABASE_ANON_KEY,
