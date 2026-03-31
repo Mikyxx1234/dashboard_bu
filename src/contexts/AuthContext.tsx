@@ -10,13 +10,15 @@ interface AuthContextType extends AuthState {
   logout: () => void;
 }
 
-const CONSULTOR_PASSWORD_HASHES: Record<string, string> = {
-  Gabriel: '4bb2f7f46fc4d6cfca4d976ac4cb4d6dc26d4ecf27ef781d3a773af94b845200',
-  Breno: '9d439b4be85dfb2844154d22d7bbbf60d9346e5ca5cd39b27d6bdb9926f15e45',
-  Camilla: 'df77a52d743e287439bb522b03108db7d80022e0d9c7d5c81bae8ac0bafaa43e',
-  Rahi: '8cba6e21951f6dc30f5bc6b1474d6f1771f50b51a12ff65937826b7cb129f7e9',
-  'Supervisão': '47446cf454ede47e4fc6298a6f2db24cf442d6825852564c62f827230a266b6f',
-};
+const CONSULTOR_PASSWORD_HASHES: Record<string, string> = Object.fromEntries(
+  [
+    ['Gabriel', import.meta.env.VITE_AUTH_HASH_GABRIEL],
+    ['Breno', import.meta.env.VITE_AUTH_HASH_BRENO],
+    ['Camilla', import.meta.env.VITE_AUTH_HASH_CAMILLA],
+    ['Rahi', import.meta.env.VITE_AUTH_HASH_RAHI],
+    ['Supervisão', import.meta.env.VITE_AUTH_HASH_SUPERVISAO],
+  ].filter(([, v]) => v),
+);
 
 const ADMIN_USERS = ['Supervisão'];
 const SESSION_KEY = 'dashboard_global_auth';

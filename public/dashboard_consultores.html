@@ -921,9 +921,10 @@
     const SESSION_KEY = 'dashboard_consultor_auth';
     const FETCH_TIMEOUT_MS = 20000;
 
-    const SUPABASE_URL = 'https://tufvduiaybogfhgausqj.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZnZkdWlheWJvZ2ZoZ2F1c3FqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTcwOTUyNjksImV4cCI6MjA3MjY3MTI2OX0.o-rO2rm5uYtI-NDp5amFm9gkXcToJWjuHDJFkaOtYtQ';
-    const SUPABASE_SERVICE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZnZkdWlheWJvZ2ZoZ2F1c3FqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA5NTI2OSwiZXhwIjoyMDcyNjcxMjY5fQ.dhfyYnXfPXHsly0YAmpUP7yS7U6CB0qkyihMPlRMfPg';
+    const _params = new URLSearchParams(window.location.search);
+    const SUPABASE_URL = _params.get('sbUrl') || '';
+    const SUPABASE_ANON_KEY = _params.get('sbAnon') || '';
+    const SUPABASE_SERVICE_KEY = _params.get('sbService') || '';
 
     let META_INTER = 70;
     let META_LEADS = 80;
@@ -934,13 +935,10 @@
     let GANHO_META = 0;
     let GANHO_SUPER = 0;
 
-    const CONSULTOR_PASSWORD_HASHES = {
-      Gabriel: '4bb2f7f46fc4d6cfca4d976ac4cb4d6dc26d4ecf27ef781d3a773af94b845200',
-      Breno: '9d439b4be85dfb2844154d22d7bbbf60d9346e5ca5cd39b27d6bdb9926f15e45',
-      Camilla: 'df77a52d743e287439bb522b03108db7d80022e0d9c7d5c81bae8ac0bafaa43e',
-      Rahi: '8cba6e21951f6dc30f5bc6b1474d6f1771f50b51a12ff65937826b7cb129f7e9',
-      'Supervisão': '47446cf454ede47e4fc6298a6f2db24cf442d6825852564c62f827230a266b6f'
-    };
+    const CONSULTOR_PASSWORD_HASHES = (function() {
+      try { return JSON.parse(_params.get('hashes') || '{}'); }
+      catch { return {}; }
+    })();
 
     const MAX_LOGIN_ATTEMPTS = 5;
     const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
