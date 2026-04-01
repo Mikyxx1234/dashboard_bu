@@ -216,11 +216,11 @@ export function CampanhasMeta() {
               <select
                 value={selectedBrand}
                 onChange={(e) => setSelectedBrand(e.target.value as 'all' | 'anhanguera' | 'sumare')}
-                className="rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 py-2 text-sm text-white [color-scheme:dark] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="rounded-lg border border-white/[0.08] bg-[#161b22] px-3 py-2 text-sm text-white [color-scheme:dark] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option value="all">Todas as bandeiras</option>
-                <option value="anhanguera">Anhanguera</option>
-                <option value="sumare">Sumare</option>
+                <option value="all" className="bg-[#161b22] text-white">Todas as bandeiras</option>
+                <option value="anhanguera" className="bg-[#161b22] text-white">Anhanguera</option>
+                <option value="sumare" className="bg-[#161b22] text-white">Sumare</option>
               </select>
 
               <button

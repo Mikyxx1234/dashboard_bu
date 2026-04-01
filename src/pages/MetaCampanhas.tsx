@@ -187,7 +187,7 @@ export function MetaCampanhas() {
               className="bg-[#161b22] border border-[#30363d] text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#58a6ff] min-w-[160px]"
             >
               {campaignTypes.map((type) => (
-                <option key={type} value={type}>{type}</option>
+                <option key={type} value={type} className="bg-[#161b22] text-white">{type}</option>
               ))}
             </select>
           </div>
@@ -197,10 +197,10 @@ export function MetaCampanhas() {
             <select
               value={selectedCampaign}
               onChange={(e) => setSelectedCampaign(e.target.value)}
-              className="bg-[#161b22] border border-[#30363d] text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#58a6ff] min-w-[200px]"
+              className="bg-[#161b22] border border-[#30363d] text-white rounded-lg px-4 py-2.5 text-sm [color-scheme:dark] focus:outline-none focus:border-[#58a6ff] min-w-[200px]"
             >
               {campaignNames.map((name) => (
-                <option key={name} value={name}>{name}</option>
+                <option key={name} value={name} className="bg-[#161b22] text-white">{name}</option>
               ))}
             </select>
           </div>

@@ -302,21 +302,21 @@ export default function AnhangueraDashboard() {
                         <select
                           value={row.status}
                           onChange={(e) => updateRow(originalIndex, 'status', e.target.value)}
-                          className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                          className="px-3 py-2 bg-[#161b22] border border-white/[0.08] rounded-xl text-sm font-medium text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                         >
-                          <option value="ATIVO">Ativo</option>
-                          <option value="INATIVO">Inativo</option>
+                          <option value="ATIVO" className="bg-[#161b22] text-white">Ativo</option>
+                          <option value="INATIVO" className="bg-[#161b22] text-white">Inativo</option>
                         </select>
                       </td>
                       <td className="px-6 py-4">
                         <select
                           value={row.qnt_distribuir}
                           onChange={(e) => updateRow(originalIndex, 'qnt_distribuir', Number(e.target.value))}
-                          className="px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                          className="px-3 py-2 bg-[#161b22] border border-white/[0.08] rounded-xl text-sm font-medium text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                         >
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
+                          <option value="1" className="bg-[#161b22] text-white">1</option>
+                          <option value="2" className="bg-[#161b22] text-white">2</option>
+                          <option value="3" className="bg-[#161b22] text-white">3</option>
                         </select>
                       </td>
                       <td className="px-6 py-4">
