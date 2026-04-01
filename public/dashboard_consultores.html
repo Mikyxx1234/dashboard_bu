@@ -545,7 +545,7 @@
 
     .summary-grid {
       display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 16px;
     }
 
@@ -586,7 +586,8 @@
 
     .metric-card.gains { border-top: 3px solid var(--success); }
     .metric-card.total { border-top: 3px solid var(--accent); }
-    .metric-card.conversion { border-top: 3px solid var(--warning); }
+    .metric-card.anhanguera-gains { border-top: 3px solid var(--anhanguera); }
+    .metric-card.sumare-gains { border-top: 3px solid var(--sumare); }
 
     .panel,
     .faculty-section,
@@ -741,6 +742,10 @@
     .faculty-anhanguera { border-top: 3px solid var(--anhanguera); }
     .faculty-sumare { border-top: 3px solid var(--sumare); }
 
+    @media (max-width: 1100px) {
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
     @media (max-width: 900px) {
       .summary-grid,
       .comparison-grid,
@@ -753,13 +758,6 @@
       body { padding: 16px; }
       .login-card, .header, .panel, .faculty-section, .metric-card, .comparison-card { padding: 18px; }
       .comparison-grid, .comparison-metrics { grid-template-columns: 1fr; }
-    }
-    @media (max-width: 900px) {
-      .summary-grid,
-      .comparison-grid,
-      .comparison-metrics {
-        grid-template-columns: 1fr;
-      }
     }
   </style>
 </head>
@@ -887,15 +885,20 @@
         <div class="metric-value" id="totalAttended">0</div>
         <div class="metric-foot">Ganhos + perdidos no período</div>
       </div>
+      <div class="metric-card glass anhanguera-gains">
+        <div class="metric-label">Ganhos Anhanguera</div>
+        <div class="metric-value" id="ganhosAnhanguera">0</div>
+        <div class="metric-foot">Conversão: <span id="convAnhanguera">0%</span></div>
+      </div>
+      <div class="metric-card glass sumare-gains">
+        <div class="metric-label">Ganhos Sumaré</div>
+        <div class="metric-value" id="ganhosSumare">0</div>
+        <div class="metric-foot">Conversão: <span id="convSumare">0%</span></div>
+      </div>
       <div class="metric-card glass gains">
         <div class="metric-label">Total de ganhos</div>
         <div class="metric-value" id="totalGains">0</div>
-        <div class="metric-foot">Soma geral no período</div>
-      </div>
-      <div class="metric-card glass conversion">
-        <div class="metric-label">Conversão geral</div>
-        <div class="metric-value" id="totalConversion">0%</div>
-        <div class="metric-foot">Ganho / total atendido</div>
+        <div class="metric-foot">Conversão: <span id="convTotal">0%</span></div>
       </div>
     </section>
 
@@ -1001,7 +1004,11 @@
       metaRealizadosValue: document.getElementById('metaRealizadosValue'),
       totalGains: document.getElementById('totalGains'),
       totalAttended: document.getElementById('totalAttended'),
-      totalConversion: document.getElementById('totalConversion'),
+      ganhosAnhanguera: document.getElementById('ganhosAnhanguera'),
+      ganhosSumare: document.getElementById('ganhosSumare'),
+      convAnhanguera: document.getElementById('convAnhanguera'),
+      convSumare: document.getElementById('convSumare'),
+      convTotal: document.getElementById('convTotal'),
       comparisonContainer: document.getElementById('comparisonContainer'),
       facultiesContainer: document.getElementById('facultiesContainer')
     };
@@ -1310,11 +1317,23 @@
       const gains = items.reduce(function(sum, item) { return sum + item.ganhos; }, 0);
       const losses = items.reduce(function(sum, item) { return sum + item.perdidos; }, 0);
       const total = gains + losses;
-      const conversion = calcConversion(gains, losses);
+
+      var anhItems = items.filter(function(i) { return normalizeFlag(i.bandeira) === 'Anhanguera'; });
+      var sumItems = items.filter(function(i) { return normalizeFlag(i.bandeira) === 'Sumaré'; });
+
+      var ganhosAnh = anhItems.reduce(function(s, i) { return s + i.ganhos; }, 0);
+      var perdidosAnh = anhItems.reduce(function(s, i) { return s + i.perdidos; }, 0);
+
+      var ganhosSum = sumItems.reduce(function(s, i) { return s + i.ganhos; }, 0);
+      var perdidosSum = sumItems.reduce(function(s, i) { return s + i.perdidos; }, 0);
 
       if (els.totalGains) els.totalGains.textContent = formatNumber(gains);
       if (els.totalAttended) els.totalAttended.textContent = formatNumber(total);
-      if (els.totalConversion) els.totalConversion.textContent = formatPercent(conversion);
+      if (els.ganhosAnhanguera) els.ganhosAnhanguera.textContent = formatNumber(ganhosAnh);
+      if (els.ganhosSumare) els.ganhosSumare.textContent = formatNumber(ganhosSum);
+      if (els.convAnhanguera) els.convAnhanguera.textContent = formatPercent(calcConversion(ganhosAnh, perdidosAnh));
+      if (els.convSumare) els.convSumare.textContent = formatPercent(calcConversion(ganhosSum, perdidosSum));
+      if (els.convTotal) els.convTotal.textContent = formatPercent(calcConversion(gains, losses));
     }
 
     function renderFaculties(items) {
