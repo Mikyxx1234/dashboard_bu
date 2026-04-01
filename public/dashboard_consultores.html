@@ -935,25 +935,40 @@
     let GANHO_META = 0;
     let GANHO_SUPER = 0;
 
-    const CONSULTOR_PASSWORD_HASHES = (function() {
-      try { return JSON.parse(_params.get('hashes') || '{}'); }
-      catch { return {}; }
-    })();
-
+    const AUTH_TABLE = 'Senhas Dash';
     const MAX_LOGIN_ATTEMPTS = 5;
     const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
     let loginAttempts = 0;
     let lockoutUntil = 0;
 
-    async function hashPassword(password) {
-      const encoder = new TextEncoder();
-      const data = encoder.encode(password);
-      const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-      const hashArray = Array.from(new Uint8Array(hashBuffer));
-      return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
+    function supaAuthHeaders() {
+      return {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
+        'Accept': 'application/json'
+      };
     }
 
-    const ADMIN_USERS = ['Supervisão'];
+    async function supaValidateLogin(usuario, senha) {
+      var url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(AUTH_TABLE)
+        + '?Usuario=eq.' + encodeURIComponent(usuario)
+        + '&Senha=eq.' + encodeURIComponent(senha)
+        + '&select=Usuario,acesso';
+      var res = await fetch(url, { headers: supaAuthHeaders() });
+      if (!res.ok) return null;
+      var rows = await res.json();
+      if (!rows.length) return null;
+      return { user: rows[0].Usuario, isAdmin: rows[0].acesso === 'ADMIN' };
+    }
+
+    async function supaFetchUserNames() {
+      var url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(AUTH_TABLE)
+        + '?select=Usuario&order=Usuario.asc';
+      var res = await fetch(url, { headers: supaAuthHeaders() });
+      if (!res.ok) return [];
+      var rows = await res.json();
+      return rows.map(function(r) { return r.Usuario; });
+    }
 
     const state = {
       raw: [],
@@ -1097,10 +1112,8 @@
       els.webhookWarning.classList.toggle('hidden', !show);
     }
 
-    function populateLoginConsultants() {
-      const names = Object.keys(CONSULTOR_PASSWORD_HASHES).sort(function(a, b) {
-        return a.localeCompare(b, 'pt-BR');
-      });
+    async function populateLoginConsultants() {
+      var names = await supaFetchUserNames();
       setSelectOptions(els.loginConsultant, names, false, '', 'Selecione seu nome');
     }
 
@@ -1114,7 +1127,6 @@
     }
 
     function applyAuthenticatedConsultant() {
-      state.isAdmin = ADMIN_USERS.includes(state.authenticatedConsultant);
       if (els.loggedUserBadge) {
         els.loggedUserBadge.textContent = state.isAdmin
           ? 'Admin autenticado: ' + state.authenticatedConsultant
@@ -1593,10 +1605,9 @@
 
       if (els.loginBtn) els.loginBtn.disabled = true;
 
-      const senhaHash = await hashPassword(senha);
-      const expectedHash = CONSULTOR_PASSWORD_HASHES[consultor];
+      var result = await supaValidateLogin(consultor, senha);
 
-      if (!expectedHash || senhaHash !== expectedHash) {
+      if (!result) {
         loginAttempts++;
         if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
           lockoutUntil = Date.now() + LOCKOUT_DURATION_MS;
@@ -1606,7 +1617,7 @@
             els.loginError.classList.remove('hidden');
           }
         } else {
-          const restantes = MAX_LOGIN_ATTEMPTS - loginAttempts;
+          var restantes = MAX_LOGIN_ATTEMPTS - loginAttempts;
           if (els.loginError) {
             els.loginError.textContent = 'Consultor ou senha inválidos. ' + restantes + ' tentativa(s) restante(s).';
             els.loginError.classList.remove('hidden');
@@ -1618,9 +1629,9 @@
 
       loginAttempts = 0;
       if (els.loginError) els.loginError.classList.add('hidden');
-      state.authenticatedConsultant = consultor;
-      state.isAdmin = ADMIN_USERS.includes(consultor);
-      state.selectedConsultant = state.isAdmin ? '' : consultor;
+      state.authenticatedConsultant = result.user;
+      state.isAdmin = result.isAdmin;
+      state.selectedConsultant = state.isAdmin ? '' : result.user;
       saveSession(consultor);
       applyAuthenticatedConsultant();
       showDashboard();
@@ -1648,12 +1659,12 @@
     }
 
     async function restoreSession() {
-      var urlParams = new URLSearchParams(window.location.search);
-      var autoUser = urlParams.get('autouser');
-      if (autoUser && CONSULTOR_PASSWORD_HASHES[autoUser]) {
+      var autoUser = _params.get('autouser');
+      var autoAdmin = _params.get('isAdmin') === '1';
+      if (autoUser) {
         state.authenticatedConsultant = autoUser;
-        state.isAdmin = ADMIN_USERS.includes(autoUser);
-        state.selectedConsultant = state.isAdmin ? '' : autoUser;
+        state.isAdmin = autoAdmin;
+        state.selectedConsultant = autoAdmin ? '' : autoUser;
         saveSession(autoUser);
         applyAuthenticatedConsultant();
         showDashboard();
@@ -1662,15 +1673,15 @@
         return;
       }
 
-      const consultor = sessionStorage.getItem(SESSION_KEY);
-      if (!consultor || !CONSULTOR_PASSWORD_HASHES[consultor]) {
+      var consultor = sessionStorage.getItem(SESSION_KEY);
+      if (!consultor) {
         showLogin();
         return;
       }
 
       state.authenticatedConsultant = consultor;
-      state.isAdmin = ADMIN_USERS.includes(consultor);
-      state.selectedConsultant = state.isAdmin ? '' : consultor;
+      state.isAdmin = false;
+      state.selectedConsultant = consultor;
       applyAuthenticatedConsultant();
       showDashboard();
       await fetchMetaFromSupabase();
@@ -1679,7 +1690,6 @@
 
     function runSelfTests() {
       console.assert(Boolean(els.loginConsultant), 'Teste: loginConsultant existe');
-      console.assert(els.loginConsultant.options.length >= 5, 'Teste: consultores carregados no select');
       console.assert(calcConversion(10, 0) === 100, 'Teste: conversão 10/0');
       console.assert(calcConversion(0, 10) === 0, 'Teste: conversão 0/10');
       console.assert(normalizeFlag('anhanguera') === 'Anhanguera', 'Teste: normalizeFlag Anhanguera');

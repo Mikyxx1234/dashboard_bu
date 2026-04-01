@@ -1,5 +1,17 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
 
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+const SUPABASE_SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+const TABLE = 'Senhas Dash';
+const SESSION_KEY = 'dashboard_global_auth';
+
+function supaHeaders() {
+  return {
+    apikey: SUPABASE_SERVICE_KEY,
+    Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+  };
+}
+
 interface AuthState {
   user: string | null;
   isAdmin: boolean;
@@ -10,35 +22,12 @@ interface AuthContextType extends AuthState {
   logout: () => void;
 }
 
-const CONSULTOR_PASSWORD_HASHES: Record<string, string> = Object.fromEntries(
-  [
-    ['Gabriel', import.meta.env.VITE_AUTH_HASH_GABRIEL],
-    ['Breno', import.meta.env.VITE_AUTH_HASH_BRENO],
-    ['Camilla', import.meta.env.VITE_AUTH_HASH_CAMILLA],
-    ['Rahi', import.meta.env.VITE_AUTH_HASH_RAHI],
-    ['Supervisão', import.meta.env.VITE_AUTH_HASH_SUPERVISAO],
-  ].filter(([, v]) => v),
-);
-
-const ADMIN_USERS = ['Supervisão'];
-const SESSION_KEY = 'dashboard_global_auth';
-
-async function hashPassword(password: string): Promise<string> {
-  const data = new TextEncoder().encode(password);
-  const buf = await crypto.subtle.digest('SHA-256', data);
-  return Array.from(new Uint8Array(buf))
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join('');
-}
-
 function loadSession(): AuthState {
   try {
     const raw = sessionStorage.getItem(SESSION_KEY);
     if (!raw) return { user: null, isAdmin: false };
-    const { user } = JSON.parse(raw);
-    if (user && CONSULTOR_PASSWORD_HASHES[user]) {
-      return { user, isAdmin: ADMIN_USERS.includes(user) };
-    }
+    const { user, isAdmin } = JSON.parse(raw);
+    if (user) return { user, isAdmin: !!isAdmin };
   } catch { /* ignore */ }
   return { user: null, isAdmin: false };
 }
@@ -48,15 +37,27 @@ const AuthContext = createContext<AuthContextType | null>(null);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [auth, setAuth] = useState<AuthState>(loadSession);
 
-  const login = useCallback(async (user: string, password: string) => {
-    const hash = await hashPassword(password);
-    const expected = CONSULTOR_PASSWORD_HASHES[user];
-    if (!expected || hash !== expected) return false;
+  const login = useCallback(async (userName: string, password: string) => {
+    try {
+      const url =
+        `${SUPABASE_URL}/rest/v1/${encodeURIComponent(TABLE)}` +
+        `?Usuario=eq.${encodeURIComponent(userName)}` +
+        `&Senha=eq.${encodeURIComponent(password)}` +
+        `&select=Usuario,acesso`;
 
-    const isAdmin = ADMIN_USERS.includes(user);
-    setAuth({ user, isAdmin });
-    sessionStorage.setItem(SESSION_KEY, JSON.stringify({ user }));
-    return true;
+      const res = await fetch(url, { headers: supaHeaders() });
+      if (!res.ok) return false;
+
+      const rows = await res.json();
+      if (!rows.length) return false;
+
+      const isAdmin = rows[0].acesso === 'ADMIN';
+      setAuth({ user: userName, isAdmin });
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ user: userName, isAdmin }));
+      return true;
+    } catch {
+      return false;
+    }
   }, []);
 
   const logout = useCallback(() => {
@@ -77,8 +78,16 @@ export function useAuth() {
   return ctx;
 }
 
-export function getConsultantNames() {
-  return Object.keys(CONSULTOR_PASSWORD_HASHES).sort((a, b) =>
-    a.localeCompare(b, 'pt-BR'),
-  );
+export async function fetchConsultantNames(): Promise<string[]> {
+  try {
+    const url =
+      `${SUPABASE_URL}/rest/v1/${encodeURIComponent(TABLE)}` +
+      `?select=Usuario&order=Usuario.asc`;
+    const res = await fetch(url, { headers: supaHeaders() });
+    if (!res.ok) return [];
+    const rows: { Usuario: string }[] = await res.json();
+    return rows.map((r) => r.Usuario);
+  } catch {
+    return [];
+  }
 }

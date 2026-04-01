@@ -1,7 +1,7 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BarChart3 } from 'lucide-react';
-import { useAuth, getConsultantNames } from '../contexts/AuthContext';
+import { useAuth, fetchConsultantNames } from '../contexts/AuthContext';
 
 export function LoginPage() {
   const { login } = useAuth();
@@ -10,8 +10,11 @@ export function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [names, setNames] = useState<string[]>([]);
 
-  const names = getConsultantNames();
+  useEffect(() => {
+    fetchConsultantNames().then(setNames);
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
