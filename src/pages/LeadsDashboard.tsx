@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { env } from '../config';
 
 export function LeadsDashboard() {
   const { user, isAdmin } = useAuth();
@@ -8,9 +9,9 @@ export function LeadsDashboard() {
     const p = new URLSearchParams({
       autouser: user || '',
       isAdmin: isAdmin ? '1' : '0',
-      sbUrl: import.meta.env.VITE_SUPABASE_URL || '',
-      sbAnon: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
-      sbService: import.meta.env.VITE_SUPABASE_SERVICE_KEY || '',
+      sbUrl: env.SUPABASE_URL,
+      sbAnon: env.SUPABASE_ANON_KEY,
+      sbService: env.SUPABASE_SERVICE_KEY,
     });
     return `/dashboard_consultores.html?${p.toString()}`;
   }, [user, isAdmin]);

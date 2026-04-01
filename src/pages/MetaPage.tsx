@@ -1,21 +1,22 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Save, RefreshCw, AlertCircle, CheckCircle2, Target, CalendarRange, Zap, TrendingUp, Award, DollarSign } from 'lucide-react';
+import { env } from '../config';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
-const SUPABASE_SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
+function readHeaders() {
+  return {
+    apikey: env.SUPABASE_ANON_KEY,
+    Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
+  };
+}
 
-const readHeaders = {
-  apikey: SUPABASE_ANON_KEY,
-  Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
-};
-
-const writeHeaders = {
-  apikey: SUPABASE_SERVICE_KEY,
-  Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
-  'Content-Type': 'application/json',
-  Prefer: 'return=representation',
-};
+function writeHeaders() {
+  return {
+    apikey: env.SUPABASE_SERVICE_KEY,
+    Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=representation',
+  };
+}
 
 interface MetaRow {
   id: number;
@@ -55,8 +56,8 @@ export function MetaPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/Meta_ANH?select=*&order=id.desc`, {
-        headers: readHeaders,
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/Meta_ANH?select=*&order=id.desc`, {
+        headers: readHeaders(),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setRows(await res.json());
@@ -120,15 +121,15 @@ export function MetaPage() {
     try {
       if (editingId !== null) {
         const res = await fetch(
-          `${SUPABASE_URL}/rest/v1/Meta_ANH?id=eq.${editingId}`,
-          { method: 'PATCH', headers: writeHeaders, body: JSON.stringify(body) },
+          `${env.SUPABASE_URL}/rest/v1/Meta_ANH?id=eq.${editingId}`,
+          { method: 'PATCH', headers: writeHeaders(), body: JSON.stringify(body) },
         );
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         setSuccess('Meta atualizada com sucesso!');
       } else {
-        const res = await fetch(`${SUPABASE_URL}/rest/v1/Meta_ANH`, {
+        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/Meta_ANH`, {
           method: 'POST',
-          headers: writeHeaders,
+          headers: writeHeaders(),
           body: JSON.stringify(body),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -151,9 +152,9 @@ export function MetaPage() {
     setError('');
     setSuccess('');
     try {
-      const res = await fetch(`${SUPABASE_URL}/rest/v1/Meta_ANH?id=eq.${id}`, {
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/Meta_ANH?id=eq.${id}`, {
         method: 'DELETE',
-        headers: writeHeaders,
+        headers: writeHeaders(),
       });
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       setSuccess('Meta excluída com sucesso!');

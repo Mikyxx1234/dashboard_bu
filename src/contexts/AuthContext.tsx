@@ -1,14 +1,13 @@
 import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { env } from '../config';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_SERVICE_KEY = import.meta.env.VITE_SUPABASE_SERVICE_KEY;
 const TABLE = 'Senhas Dash';
 const SESSION_KEY = 'dashboard_global_auth';
 
 function supaHeaders() {
   return {
-    apikey: SUPABASE_SERVICE_KEY,
-    Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+    apikey: env.SUPABASE_SERVICE_KEY,
+    Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
   };
 }
 
@@ -40,7 +39,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (userName: string, password: string) => {
     try {
       const url =
-        `${SUPABASE_URL}/rest/v1/${encodeURIComponent(TABLE)}` +
+        `${env.SUPABASE_URL}/rest/v1/${encodeURIComponent(TABLE)}` +
         `?Usuario=eq.${encodeURIComponent(userName)}` +
         `&Senha=eq.${encodeURIComponent(password)}` +
         `&select=Usuario,acesso`;
@@ -81,7 +80,7 @@ export function useAuth() {
 export async function fetchConsultantNames(): Promise<string[]> {
   try {
     const url =
-      `${SUPABASE_URL}/rest/v1/${encodeURIComponent(TABLE)}` +
+      `${env.SUPABASE_URL}/rest/v1/${encodeURIComponent(TABLE)}` +
       `?select=Usuario&order=Usuario.asc`;
     const res = await fetch(url, { headers: supaHeaders() });
     if (!res.ok) return [];

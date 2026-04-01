@@ -24,8 +24,12 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 # Copy built files from build stage
 COPY --from=build /app/dist /usr/share/nginx/html
 
+# Copy entrypoint script
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Expose port 80
 EXPOSE 80
 
-# Start nginx
-CMD ["nginx", "-g", "daemon off;"]
+# Use entrypoint to inject env vars at runtime
+ENTRYPOINT ["/entrypoint.sh"]
