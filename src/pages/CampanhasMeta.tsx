@@ -182,9 +182,17 @@ export function CampanhasMeta() {
       .slice(0, 8);
   })();
 
+  const darkTooltipStyle = {
+    backgroundColor: '#1e293b',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.3)',
+    color: '#e2e8f0',
+  };
+
   return (
-    <>
-      <header className="border-b border-gray-200 bg-white">
+    <div style={{ background: 'linear-gradient(135deg, #0c1222 0%, #111a2e 50%, #0f1628 100%)', minHeight: '100vh' }}>
+      <header style={{ background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(24px)' }} className="border-b border-white/[0.07]">
         <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
@@ -192,8 +200,8 @@ export function CampanhasMeta() {
                 <Target className="h-6 w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-gray-900">Resultado Geral</h1>
-                <p className="text-sm text-gray-500">Visao geral dos resultados de campanhas</p>
+                <h1 className="text-xl font-bold text-white">Resultado Geral</h1>
+                <p className="text-sm text-slate-400">Visao geral dos resultados de campanhas</p>
               </div>
             </div>
 
@@ -208,11 +216,11 @@ export function CampanhasMeta() {
               <select
                 value={selectedBrand}
                 onChange={(e) => setSelectedBrand(e.target.value as 'all' | 'anhanguera' | 'sumare')}
-                className="rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                className="rounded-lg border border-white/[0.08] bg-[#161b22] px-3 py-2 text-sm text-white [color-scheme:dark] focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500"
               >
-                <option value="all">Todas as bandeiras</option>
-                <option value="anhanguera">Anhanguera</option>
-                <option value="sumare">Sumare</option>
+                <option value="all" className="bg-[#161b22] text-white">Todas as bandeiras</option>
+                <option value="anhanguera" className="bg-[#161b22] text-white">Anhanguera</option>
+                <option value="sumare" className="bg-[#161b22] text-white">Sumare</option>
               </select>
 
               <button
@@ -230,7 +238,7 @@ export function CampanhasMeta() {
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
         {error && (
-          <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
+          <div className="mb-6 flex items-center gap-3 rounded-lg border border-red-500/20 bg-red-500/10 p-4 text-red-300">
             <AlertCircle className="h-5 w-5" />
             <span>{error}</span>
           </div>
@@ -239,77 +247,77 @@ export function CampanhasMeta() {
         {loading && data.length === 0 ? (
           <div className="flex items-center justify-center py-20">
             <div className="text-center">
-              <RefreshCw className="mx-auto h-8 w-8 animate-spin text-gray-400" />
-              <p className="mt-3 text-gray-500">Carregando dados...</p>
+              <RefreshCw className="mx-auto h-8 w-8 animate-spin text-slate-500" />
+              <p className="mt-3 text-slate-500">Carregando dados...</p>
             </div>
           </div>
         ) : (
           <>
             <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-              <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-5" style={{ backdropFilter: 'blur(24px)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-blue-100 p-2">
-                    <Users className="h-5 w-5 text-blue-600" />
+                  <div className="rounded-lg bg-blue-500/20 p-2">
+                    <Users className="h-5 w-5 text-blue-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Total Leads</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatNumber(totals.total)}</p>
+                    <p className="text-sm font-medium text-slate-400">Total Leads</p>
+                    <p className="text-2xl font-bold text-white">{formatNumber(totals.total)}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-5" style={{ backdropFilter: 'blur(24px)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-emerald-100 p-2">
-                    <UserPlus className="h-5 w-5 text-emerald-600" />
+                  <div className="rounded-lg bg-emerald-500/20 p-2">
+                    <UserPlus className="h-5 w-5 text-emerald-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Leads Novos</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatNumber(totals.novos)}</p>
+                    <p className="text-sm font-medium text-slate-400">Leads Novos</p>
+                    <p className="text-2xl font-bold text-white">{formatNumber(totals.novos)}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-5" style={{ backdropFilter: 'blur(24px)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-amber-100 p-2">
-                    <RotateCcw className="h-5 w-5 text-amber-600" />
+                  <div className="rounded-lg bg-amber-500/20 p-2">
+                    <RotateCcw className="h-5 w-5 text-amber-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Recadastro</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatNumber(totals.recadastro)}</p>
+                    <p className="text-sm font-medium text-slate-400">Recadastro</p>
+                    <p className="text-2xl font-bold text-white">{formatNumber(totals.recadastro)}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-5" style={{ backdropFilter: 'blur(24px)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-green-100 p-2">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
+                  <div className="rounded-lg bg-green-500/20 p-2">
+                    <TrendingUp className="h-5 w-5 text-green-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Conversoes</p>
-                    <p className="text-2xl font-bold text-gray-900">{formatNumber(totalGanhos)}</p>
+                    <p className="text-sm font-medium text-slate-400">Conversoes</p>
+                    <p className="text-2xl font-bold text-white">{formatNumber(totalGanhos)}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-5">
+              <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-5" style={{ backdropFilter: 'blur(24px)' }}>
                 <div className="flex items-center gap-3">
-                  <div className="rounded-lg bg-cyan-100 p-2">
-                    <Target className="h-5 w-5 text-cyan-600" />
+                  <div className="rounded-lg bg-cyan-500/20 p-2">
+                    <Target className="h-5 w-5 text-cyan-400" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-500">Taxa Conv.</p>
-                    <p className="text-2xl font-bold text-gray-900">{conversionRate}%</p>
+                    <p className="text-sm font-medium text-slate-400">Taxa Conv.</p>
+                    <p className="text-2xl font-bold text-white">{conversionRate}%</p>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="mb-8 grid gap-6 lg:grid-cols-2">
-              <div className="rounded-xl border border-gray-200 bg-white p-6">
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Leads por Dia</h3>
+              <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-6" style={{ backdropFilter: 'blur(24px)' }}>
+                <h3 className="mb-4 text-lg font-semibold text-slate-100">Leads por Dia</h3>
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     <AreaChart data={chartData}>
@@ -323,18 +331,11 @@ export function CampanhasMeta() {
                           <stop offset="95%" stopColor={COLORS.sumare} stopOpacity={0} />
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="date" tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                      <YAxis tick={{ fontSize: 12 }} stroke="#9ca3af" />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
-                      />
-                      <Legend />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                      <XAxis dataKey="date" tick={{ fontSize: 12, fill: '#94a3b8' }} stroke="#64748b" />
+                      <YAxis tick={{ fontSize: 12, fill: '#94a3b8' }} stroke="#64748b" />
+                      <Tooltip contentStyle={darkTooltipStyle} />
+                      <Legend wrapperStyle={{ color: '#94a3b8' }} />
                       {(selectedBrand === 'all' || selectedBrand === 'anhanguera') && (
                         <Area
                           type="monotone"
@@ -360,29 +361,22 @@ export function CampanhasMeta() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-6">
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Performance por Consultor</h3>
+              <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-6" style={{ backdropFilter: 'blur(24px)' }}>
+                <h3 className="mb-4 text-lg font-semibold text-slate-100">Performance por Consultor</h3>
                 <div className="h-72">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={consultantPerformance} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis type="number" tick={{ fontSize: 12 }} stroke="#9ca3af" />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
+                      <XAxis type="number" tick={{ fontSize: 12, fill: '#94a3b8' }} stroke="#64748b" />
                       <YAxis
                         dataKey="name"
                         type="category"
-                        tick={{ fontSize: 11 }}
-                        stroke="#9ca3af"
+                        tick={{ fontSize: 11, fill: '#94a3b8' }}
+                        stroke="#64748b"
                         width={80}
                       />
-                      <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
-                      />
-                      <Legend />
+                      <Tooltip contentStyle={darkTooltipStyle} />
+                      <Legend wrapperStyle={{ color: '#94a3b8' }} />
                       <Bar dataKey="ganhos" name="Ganhos" fill={COLORS.ganho} radius={[0, 4, 4, 0]} />
                       <Bar dataKey="perdidos" name="Perdidos" fill={COLORS.perdido} radius={[0, 4, 4, 0]} />
                     </BarChart>
@@ -392,8 +386,8 @@ export function CampanhasMeta() {
             </div>
 
             <div className="grid gap-6 lg:grid-cols-2">
-              <div className="rounded-xl border border-gray-200 bg-white p-6">
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Tipo de Lead</h3>
+              <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-6" style={{ backdropFilter: 'blur(24px)' }}>
+                <h3 className="mb-4 text-lg font-semibold text-slate-100">Tipo de Lead</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -406,18 +400,14 @@ export function CampanhasMeta() {
                         paddingAngle={5}
                         dataKey="value"
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={{ stroke: '#64748b' }}
                       >
                         {typeChartData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
                       <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
+                        contentStyle={darkTooltipStyle}
                         formatter={(value: number) => formatNumber(value)}
                       />
                     </PieChart>
@@ -427,7 +417,7 @@ export function CampanhasMeta() {
                   {typeChartData.map((item) => (
                     <div key={item.name} className="flex items-center gap-2">
                       <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-slate-400">
                         {item.name}: {formatNumber(item.value)}
                       </span>
                     </div>
@@ -435,8 +425,8 @@ export function CampanhasMeta() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-gray-200 bg-white p-6">
-                <h3 className="mb-4 text-lg font-semibold text-gray-900">Status de Conversao</h3>
+              <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-6" style={{ backdropFilter: 'blur(24px)' }}>
+                <h3 className="mb-4 text-lg font-semibold text-slate-100">Status de Conversao</h3>
                 <div className="h-64">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -449,18 +439,14 @@ export function CampanhasMeta() {
                         paddingAngle={5}
                         dataKey="value"
                         label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                        labelLine={{ stroke: '#64748b' }}
                       >
                         {statusChartData.map((entry, index) => (
                           <Cell key={`cell-${index}`} fill={entry.color} />
                         ))}
                       </Pie>
                       <Tooltip
-                        contentStyle={{
-                          backgroundColor: '#fff',
-                          border: '1px solid #e5e7eb',
-                          borderRadius: '8px',
-                          boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)',
-                        }}
+                        contentStyle={darkTooltipStyle}
                         formatter={(value: number) => formatNumber(value)}
                       />
                     </PieChart>
@@ -470,7 +456,7 @@ export function CampanhasMeta() {
                   {statusChartData.map((item) => (
                     <div key={item.name} className="flex items-center gap-2">
                       <div className="h-3 w-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-sm text-gray-600">
+                      <span className="text-sm text-slate-400">
                         {item.name}: {formatNumber(item.value)}
                       </span>
                     </div>
@@ -481,6 +467,6 @@ export function CampanhasMeta() {
           </>
         )}
       </main>
-    </>
+    </div>
   );
 }

@@ -114,8 +114,8 @@ export default function AnhangueraDashboard() {
   const ultimoLead = currentRows.reduce((max, r) => Math.max(max, +new Date(r.ultimo_lead || 0)), 0);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-slate-50 to-slate-100">
-      <div className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-slate-200/50">
+    <div className="min-h-screen" style={{ background: 'linear-gradient(135deg, #0c1222 0%, #111a2e 50%, #0f1628 100%)' }}>
+      <div className="sticky top-0 z-40 bg-[#0f172a]/80 backdrop-blur-xl border-b border-white/[0.06]">
         <div className="max-w-7xl mx-auto px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -124,8 +124,8 @@ export default function AnhangueraDashboard() {
                 <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-orange-400 to-transparent opacity-50 blur-sm"></div>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-slate-900 tracking-tight">Faculdade Anhanguera</h1>
-                <p className="text-sm text-slate-600">Gestão de Leads e Distribuição</p>
+                <h1 className="text-xl font-bold text-white tracking-tight">Faculdade Anhanguera</h1>
+                <p className="text-sm text-slate-400">Gestão de Leads e Distribuição</p>
               </div>
               <div className="flex gap-2 ml-8">
                 <button
@@ -133,7 +133,7 @@ export default function AnhangueraDashboard() {
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                     activeTab === 'comercial'
                       ? 'bg-orange-600 text-white shadow-lg'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                      : 'bg-white/[0.05] text-slate-300 border border-white/[0.08]'
                   }`}
                 >
                   Distribuição Comercial
@@ -143,7 +143,7 @@ export default function AnhangueraDashboard() {
                   className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
                     activeTab === 'academico'
                       ? 'bg-orange-600 text-white shadow-lg'
-                      : 'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'
+                      : 'bg-white/[0.05] text-slate-300 border border-white/[0.08]'
                   }`}
                 >
                   Distribuição Acadêmico
@@ -157,7 +157,7 @@ export default function AnhangueraDashboard() {
                   <button
                     onClick={handleSalvar}
                     disabled={loading}
-                    className="group relative px-5 py-2.5 bg-white text-slate-700 rounded-xl font-semibold shadow-sm hover:shadow-md border border-slate-200 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+                    className="group relative px-5 py-2.5 bg-white/[0.05] text-slate-300 rounded-xl font-semibold border border-white/[0.08] hover:bg-white/[0.08] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-2">
                       <Save className="w-4 h-4" />
@@ -168,7 +168,7 @@ export default function AnhangueraDashboard() {
                   <button
                     onClick={handleAtualizar}
                     disabled={loading}
-                    className="group relative px-5 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl font-semibold shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+                    className="group relative px-5 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl font-semibold shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-2">
                       <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -184,7 +184,7 @@ export default function AnhangueraDashboard() {
                       window.dispatchEvent(event);
                     }}
                     disabled={loading}
-                    className="group relative px-5 py-2.5 bg-white text-slate-700 rounded-xl font-semibold shadow-sm hover:shadow-md border border-slate-200 hover:border-slate-300 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+                    className="group relative px-5 py-2.5 bg-white/[0.05] text-slate-300 rounded-xl font-semibold border border-white/[0.08] hover:bg-white/[0.08] transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-2">
                       <Save className="w-4 h-4" />
@@ -198,7 +198,7 @@ export default function AnhangueraDashboard() {
                       window.dispatchEvent(event);
                     }}
                     disabled={loading}
-                    className="group relative px-5 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl font-semibold shadow-lg shadow-orange-500/30 hover:shadow-xl hover:shadow-orange-500/40 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:scale-105"
+                    className="group relative px-5 py-2.5 bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-700 hover:to-amber-700 text-white rounded-xl font-semibold shadow-lg shadow-orange-500/20 hover:shadow-xl hover:shadow-orange-500/30 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <div className="flex items-center gap-2">
                       <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
@@ -219,64 +219,64 @@ export default function AnhangueraDashboard() {
           ) : (
             <>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="group relative bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-200/50 hover:scale-105">
-              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="group relative bg-[#161b22] rounded-3xl p-6 transition-all duration-300 border border-white/[0.07]">
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="relative">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-orange-100 rounded-2xl">
-                    <Users className="w-6 h-6 text-orange-600" />
+                  <div className="p-3 bg-orange-500/20 rounded-2xl">
+                    <Users className="w-6 h-6 text-orange-400" />
                   </div>
                 </div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Total de Pessoas</p>
-                <p className="text-4xl font-bold text-slate-900">{pessoas}</p>
+                <p className="text-sm font-medium text-slate-400 mb-1">Total de Pessoas</p>
+                <p className="text-4xl font-bold text-white">{pessoas}</p>
               </div>
             </div>
 
-            <div className="group relative bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-200/50 hover:scale-105">
-              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="group relative bg-[#161b22] rounded-3xl p-6 transition-all duration-300 border border-white/[0.07]">
+              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="relative">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-emerald-100 rounded-2xl">
-                    <CheckCircle className="w-6 h-6 text-emerald-600" />
+                  <div className="p-3 bg-emerald-500/20 rounded-2xl">
+                    <CheckCircle className="w-6 h-6 text-emerald-400" />
                   </div>
                 </div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Usuários Ativos</p>
-                <p className="text-4xl font-bold text-slate-900">{ativos}</p>
+                <p className="text-sm font-medium text-slate-400 mb-1">Usuários Ativos</p>
+                <p className="text-4xl font-bold text-white">{ativos}</p>
               </div>
             </div>
 
-            <div className="group relative bg-white rounded-3xl p-6 shadow-sm hover:shadow-xl transition-all duration-300 border border-slate-200/50 hover:scale-105">
-              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+            <div className="group relative bg-[#161b22] rounded-3xl p-6 transition-all duration-300 border border-white/[0.07]">
+              <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
               <div className="relative">
                 <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-amber-100 rounded-2xl">
-                    <Clock className="w-6 h-6 text-amber-600" />
+                  <div className="p-3 bg-amber-500/20 rounded-2xl">
+                    <Clock className="w-6 h-6 text-amber-400" />
                   </div>
                 </div>
-                <p className="text-sm font-medium text-slate-600 mb-1">Última Distribuição</p>
-                <p className="text-lg font-bold text-slate-900">
+                <p className="text-sm font-medium text-slate-400 mb-1">Última Distribuição</p>
+                <p className="text-lg font-bold text-white">
                   {ultimoLead ? fmtDate(new Date(ultimoLead).toISOString()) : '—'}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-3xl shadow-sm border border-slate-200/50 overflow-hidden">
-            <div className="px-6 py-5 border-b border-slate-200">
-              <h2 className="text-lg font-bold text-slate-900">Distribuição de Leads</h2>
-              <p className="text-sm text-slate-600 mt-1">Gerencie status e configurações de distribuição</p>
+          <div className="bg-[#161b22] rounded-3xl border border-white/[0.07] overflow-hidden">
+            <div className="px-6 py-5 border-b border-white/[0.06]">
+              <h2 className="text-lg font-bold text-white">Distribuição de Leads</h2>
+              <p className="text-sm text-slate-400 mt-1">Gerencie status e configurações de distribuição</p>
             </div>
 
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-slate-50">
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Nome</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">ID Usuário</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Status</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Qtd Distribuir</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">Observação</th>
-                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-700">
+                  <tr className="bg-white/[0.03]">
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">Nome</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">ID Usuário</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">Status</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">Qtd Distribuir</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">Observação</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-slate-400">
                       <button
                         onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
                         className="flex items-center gap-2 hover:text-orange-600 transition-colors"
@@ -287,7 +287,7 @@ export default function AnhangueraDashboard() {
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-200">
+                <tbody className="divide-y divide-white/[0.04]">
                   {[...currentRows].sort((a, b) => {
                     const dateA = new Date(a.ultimo_lead || 0).getTime();
                     const dateB = new Date(b.ultimo_lead || 0).getTime();
@@ -295,28 +295,28 @@ export default function AnhangueraDashboard() {
                   }).map((row) => {
                     const originalIndex = currentRows.findIndex(r => r.id_usuario === row.id_usuario);
                     return (
-                    <tr key={row.id_usuario} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4 text-sm font-medium text-slate-900">{row.nome}</td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-700">{row.id_usuario}</td>
+                    <tr key={row.id_usuario} className="hover:bg-white/[0.03] transition-colors">
+                      <td className="px-6 py-4 text-sm font-medium text-slate-200">{row.nome}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-400">{row.id_usuario}</td>
                       <td className="px-6 py-4">
                         <select
                           value={row.status}
                           onChange={(e) => updateRow(originalIndex, 'status', e.target.value)}
-                          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                          className="px-3 py-2 bg-[#161b22] border border-white/[0.08] rounded-xl text-sm font-medium text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                         >
-                          <option value="ATIVO">Ativo</option>
-                          <option value="INATIVO">Inativo</option>
+                          <option value="ATIVO" className="bg-[#161b22] text-white">Ativo</option>
+                          <option value="INATIVO" className="bg-[#161b22] text-white">Inativo</option>
                         </select>
                       </td>
                       <td className="px-6 py-4">
                         <select
                           value={row.qnt_distribuir}
                           onChange={(e) => updateRow(originalIndex, 'qnt_distribuir', Number(e.target.value))}
-                          className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-900 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                          className="px-3 py-2 bg-[#161b22] border border-white/[0.08] rounded-xl text-sm font-medium text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                         >
-                          <option value="1">1</option>
-                          <option value="2">2</option>
-                          <option value="3">3</option>
+                          <option value="1" className="bg-[#161b22] text-white">1</option>
+                          <option value="2" className="bg-[#161b22] text-white">2</option>
+                          <option value="3" className="bg-[#161b22] text-white">3</option>
                         </select>
                       </td>
                       <td className="px-6 py-4">
@@ -325,10 +325,10 @@ export default function AnhangueraDashboard() {
                           value={row.obs}
                           onChange={(e) => updateRow(originalIndex, 'obs', e.target.value)}
                           placeholder="Adicionar observação"
-                          className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
+                          className="w-full px-3 py-2 bg-white/[0.04] border border-white/[0.08] rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent transition-all"
                         />
                       </td>
-                      <td className="px-6 py-4 text-sm font-medium text-slate-700">{fmtDate(row.ultimo_lead)}</td>
+                      <td className="px-6 py-4 text-sm font-medium text-slate-400">{fmtDate(row.ultimo_lead)}</td>
                     </tr>
                   );
                   })}

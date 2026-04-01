@@ -1,0 +1,1718 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Individual de Consultores</title>
+  <style>
+    :root {
+      --bg: #0b1020;
+      --panel: rgba(19, 28, 48, 0.82);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #edf2ff;
+      --muted: #9aa7c7;
+      --muted-2: #7e8cae;
+      --success: #4ade80;
+      --danger: #fb7185;
+      --warning: #fbbf24;
+      --accent: #60a5fa;
+      --sumare: #38bdf8;
+      --anhanguera: #fb923c;
+      --shadow: 0 14px 40px rgba(0, 0, 0, 0.35);
+      --radius: 20px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(56, 189, 248, 0.08), transparent 28%),
+        radial-gradient(circle at top right, rgba(251, 146, 60, 0.08), transparent 24%),
+        linear-gradient(180deg, #09101f 0%, #0c1324 100%);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 28px;
+    }
+
+    .hidden { display: none !important; }
+
+    .glass {
+      background: var(--panel);
+      backdrop-filter: blur(18px);
+      -webkit-backdrop-filter: blur(18px);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+    }
+
+    .login-screen {
+      min-height: calc(100vh - 56px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .login-card {
+      width: 100%;
+      max-width: 520px;
+      border-radius: 28px;
+      padding: 32px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .login-head,
+    .header-left {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .eyebrow {
+      color: var(--accent);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      font-weight: 700;
+    }
+
+    h1 {
+      font-size: clamp(1.8rem, 2.6vw, 2.6rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 0.98rem;
+      line-height: 1.6;
+    }
+
+    .login-form {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-width: 170px;
+    }
+
+    .field label {
+      font-size: 0.82rem;
+      color: var(--muted);
+      font-weight: 600;
+    }
+
+    .field input,
+    .field select {
+      width: 100%;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      padding: 12px 14px;
+      border-radius: 14px;
+      outline: none;
+      font-size: 0.95rem;
+      transition: 0.2s ease;
+      appearance: auto;
+      -webkit-appearance: auto;
+      -moz-appearance: auto;
+    }
+
+    .field select option {
+      color: #111827;
+      background: #ffffff;
+    }
+
+    .field input:focus,
+    .field select:focus {
+      border-color: rgba(96, 165, 250, 0.45);
+      box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.12);
+    }
+
+    .login-help {
+      color: var(--muted-2);
+      font-size: 0.86rem;
+      line-height: 1.5;
+    }
+
+    .login-error,
+    .webhook-warning {
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 0.9rem;
+    }
+
+    .login-error {
+      background: rgba(251, 113, 133, 0.08);
+      border: 1px solid rgba(251, 113, 133, 0.2);
+      color: #fecdd3;
+    }
+
+    .webhook-warning {
+      background: rgba(251, 191, 36, 0.08);
+      border: 1px solid rgba(251, 191, 36, 0.2);
+      color: #fde68a;
+    }
+
+    .container {
+      max-width: 1480px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+    }
+
+    .header {
+      border-radius: 28px;
+      padding: 26px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 20px;
+      flex-wrap: wrap;
+    }
+
+    .header-actions,
+    .filters,
+    .status-left,
+    .faculty-stats {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .filters {
+      align-items: end;
+      gap: 14px;
+    }
+
+    .user-badge {
+      border-radius: 999px;
+      padding: 10px 14px;
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--muted);
+      font-size: 0.88rem;
+      font-weight: 600;
+    }
+
+    .btn {
+      border: 0;
+      border-radius: 14px;
+      padding: 12px 18px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.18s ease, opacity 0.18s ease, box-shadow 0.18s ease;
+      color: white;
+      min-height: 46px;
+    }
+
+    .btn:hover {
+      transform: translateY(-1px);
+      opacity: 0.96;
+    }
+
+    .btn:disabled {
+      cursor: not-allowed;
+      opacity: 0.75;
+      transform: none;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, #2563eb, #3b82f6);
+      box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .status-bar {
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      padding: 0;
+      border-radius: 22px;
+      overflow: hidden;
+    }
+
+    .status-bar-top {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 10px 20px;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      box-shadow: 0 0 12px rgba(74, 222, 128, 0.6);
+      flex-shrink: 0;
+    }
+
+    .status-text {
+      color: var(--muted-2);
+      font-size: 0.82rem;
+    }
+
+    .status-meta {
+      display: flex;
+      align-items: stretch;
+      flex-wrap: nowrap;
+      min-height: 80px;
+    }
+
+    .meta-period {
+      display: flex;
+      align-items: center;
+      padding: 20px 28px;
+      background: rgba(96, 165, 250, 0.06);
+      border-right: 1px solid rgba(255, 255, 255, 0.06);
+      color: var(--accent);
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .meta-levels {
+      display: flex;
+      align-items: stretch;
+      gap: 0;
+      flex: 1;
+      justify-content: center;
+    }
+
+    .meta-level {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 14px 32px;
+      min-width: 100px;
+      gap: 4px;
+      background: transparent;
+      position: relative;
+    }
+
+    .meta-level + .meta-level::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 25%;
+      bottom: 25%;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .meta-level-label {
+      font-size: 0.7rem;
+      font-weight: 600;
+      color: var(--muted-2);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .meta-level-value {
+      font-size: 1.6rem;
+      font-weight: 800;
+      color: var(--muted);
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .meta-level.highlight {
+      background: rgba(96, 165, 250, 0.06);
+      border-radius: 0;
+    }
+
+    .meta-level.highlight::before {
+      display: none;
+    }
+
+    .meta-level.highlight::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 20%;
+      right: 20%;
+      height: 3px;
+      border-radius: 3px 3px 0 0;
+      background: var(--accent);
+      box-shadow: 0 0 10px rgba(96, 165, 250, 0.5);
+    }
+
+    .meta-level.highlight .meta-level-label {
+      color: var(--accent);
+      font-weight: 700;
+    }
+
+    .meta-level.highlight .meta-level-value {
+      color: var(--accent);
+    }
+
+    .meta-level-reward {
+      font-size: 0.68rem;
+      font-weight: 600;
+      color: var(--success);
+      opacity: 0.75;
+      margin-top: 2px;
+    }
+
+    .meta-level.highlight .meta-level-reward {
+      opacity: 1;
+    }
+
+    .meta-falta {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-width: 180px;
+      padding: 14px 36px;
+      background: rgba(255, 255, 255, 0.02);
+      border-left: 1px solid rgba(255, 255, 255, 0.06);
+      position: relative;
+      gap: 4px;
+      margin-left: auto;
+    }
+
+    .meta-falta-label {
+      font-size: 0.66rem;
+      font-weight: 700;
+      color: var(--muted-2);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      white-space: nowrap;
+    }
+
+    .meta-falta-value {
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.04em;
+      line-height: 1;
+    }
+
+    .meta-falta-value.achieved {
+      color: var(--success);
+      font-size: 2rem;
+    }
+
+    @media (max-width: 700px) {
+      .status-meta {
+        flex-wrap: wrap;
+      }
+      .meta-period {
+        width: 100%;
+        justify-content: center;
+        border-right: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .meta-levels {
+        min-width: 100%;
+        justify-content: center;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .meta-falta {
+        min-width: 100%;
+        padding: 18px;
+        border-left: none;
+        margin-left: 0;
+      }
+    }
+
+    .premiacao-card {
+      border-radius: 22px;
+      padding: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: stretch;
+      min-height: 100px;
+    }
+
+    .premiacao-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 20px 28px;
+      min-width: 140px;
+      gap: 4px;
+      background: linear-gradient(135deg, rgba(74, 222, 128, 0.08), rgba(52, 211, 153, 0.04));
+      border-right: 1px solid rgba(74, 222, 128, 0.12);
+    }
+
+    .premiacao-badge-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--success);
+    }
+
+    .premiacao-badge-value {
+      font-size: 1.8rem;
+      font-weight: 800;
+      color: var(--success);
+      letter-spacing: -0.03em;
+      line-height: 1;
+      text-shadow: 0 0 20px rgba(74, 222, 128, 0.3);
+    }
+
+    .premiacao-details {
+      display: flex;
+      flex: 1;
+      align-items: center;
+      gap: 0;
+    }
+
+    .premiacao-detail {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      flex: 1;
+      padding: 16px 20px;
+      gap: 4px;
+      position: relative;
+    }
+
+    .premiacao-detail + .premiacao-detail::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 25%;
+      bottom: 25%;
+      width: 1px;
+      background: rgba(255, 255, 255, 0.06);
+    }
+
+    .premiacao-detail-label {
+      font-size: 0.65rem;
+      font-weight: 600;
+      color: var(--muted-2);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
+    .premiacao-detail-value {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .premiacao-detail-value.tier-active {
+      color: var(--success);
+    }
+
+    .premiacao-detail-value.tier-pending {
+      color: var(--muted-2);
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 700px) {
+      .premiacao-card {
+        flex-wrap: wrap;
+      }
+      .premiacao-badge {
+        width: 100%;
+        border-right: none;
+        border-bottom: 1px solid rgba(74, 222, 128, 0.12);
+      }
+      .premiacao-details {
+        flex-wrap: wrap;
+      }
+      .premiacao-detail {
+        min-width: 50%;
+      }
+    }
+
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .metric-card {
+      border-radius: var(--radius);
+      padding: 22px;
+      position: relative;
+      overflow: hidden;
+      min-height: 134px;
+    }
+
+    .metric-card::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.04), transparent 50%);
+      pointer-events: none;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 14px;
+    }
+
+    .metric-value {
+      font-size: clamp(1.8rem, 2.4vw, 2.5rem);
+      font-weight: 800;
+      letter-spacing: -0.04em;
+      margin-bottom: 8px;
+    }
+
+    .metric-foot {
+      color: var(--muted-2);
+      font-size: 0.85rem;
+    }
+
+    .metric-card.gains { border-top: 3px solid var(--success); }
+    .metric-card.total { border-top: 3px solid var(--accent); }
+    .metric-card.conversion { border-top: 3px solid var(--warning); }
+
+    .panel,
+    .faculty-section,
+    .comparison-card {
+      border-radius: 24px;
+      padding: 22px;
+    }
+
+    .panel-header,
+    .faculty-header,
+    .comparison-head,
+    .consultant-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .panel-header,
+    .faculty-header,
+    .comparison-head {
+      margin-bottom: 18px;
+    }
+
+    .panel-title,
+    .faculty-name,
+    .comparison-title,
+    .consultant-name {
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+
+    .panel-title { font-size: 1.15rem; }
+    .faculty-name { font-size: 1.18rem; }
+    .comparison-title { font-size: 1.02rem; }
+    .consultant-name { font-size: 1rem; line-height: 1.3; }
+
+    .panel-subtitle,
+    .meta,
+    .consultant-flag,
+    .comparison-badge {
+      color: var(--muted);
+    }
+
+    .panel-subtitle { font-size: 0.9rem; margin-top: 4px; }
+    .meta { font-size: 0.85rem; }
+    .consultant-flag { font-size: 0.82rem; margin-top: 4px; }
+
+    .faculties {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+    }
+
+    .faculty-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .faculty-pill {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      box-shadow: 0 0 18px currentColor;
+    }
+
+    .faculty-stat,
+    .badge-conv,
+    .comparison-badge {
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 14px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+    }
+
+    .consultants-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+    }
+
+    .consultant-card,
+    .comparison-card,
+    .comparison-metric {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .consultant-card {
+      border-radius: 20px;
+      padding: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    .comparison-badge {
+      font-size: 0.78rem;
+      border-radius: 999px;
+      padding: 6px 10px;
+    }
+
+    .comparison-metrics {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 10px;
+    }
+
+    .comparison-metric {
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .comparison-metric-label {
+      color: var(--muted);
+      font-size: 0.76rem;
+      margin-bottom: 6px;
+    }
+
+    .comparison-metric-value {
+      font-size: 1.12rem;
+      font-weight: 800;
+    }
+
+    .footer-note {
+      color: var(--muted-2);
+      font-size: 0.82rem;
+      text-align: center;
+      padding: 8px 0 20px;
+    }
+
+    .empty-state,
+    .loading-state,
+    .error-state {
+      padding: 24px;
+      border-radius: 20px;
+      text-align: center;
+      color: var(--muted);
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px dashed rgba(255, 255, 255, 0.08);
+    }
+
+    .faculty-anhanguera { border-top: 3px solid var(--anhanguera); }
+    .faculty-sumare { border-top: 3px solid var(--sumare); }
+
+    @media (max-width: 900px) {
+      .summary-grid,
+      .comparison-grid,
+      .comparison-metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    @media (max-width: 640px) {
+      body { padding: 16px; }
+      .login-card, .header, .panel, .faculty-section, .metric-card, .comparison-card { padding: 18px; }
+      .comparison-grid, .comparison-metrics { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 900px) {
+      .summary-grid,
+      .comparison-grid,
+      .comparison-metrics {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <section id="loginScreen" class="login-screen">
+    <div class="login-card glass">
+      <div class="login-head">
+        <div class="eyebrow">Acesso restrito</div>
+        <h1>Login do consultor</h1>
+        <p class="subtitle">Entre com seu nome e sua senha individual para visualizar somente os seus resultados.</p>
+      </div>
+
+      <div class="login-form">
+        <div class="field">
+          <label for="loginConsultant">Consultor</label>
+          <select id="loginConsultant"></select>
+        </div>
+
+        <div class="field">
+          <label for="loginPassword">Senha</label>
+          <input type="password" id="loginPassword" placeholder="Digite sua senha" />
+        </div>
+
+        <button class="btn btn-primary" id="loginBtn">Entrar</button>
+        <div id="webhookWarning" class="webhook-warning hidden">O webhook precisa responder com JSON válido para a dashboard carregar.</div>
+        <div class="login-help">Cada consultor enxerga apenas os próprios dados. Após o login, os dados dos demais consultores permanecem indisponíveis.</div>
+        <div id="loginError" class="login-error hidden">Consultor ou senha inválidos.</div>
+      </div>
+    </div>
+  </section>
+
+  <main id="dashboardApp" class="container hidden">
+    <section class="header glass" id="headerSection">
+      <div class="header-left">
+        <div class="eyebrow">Dashboard Gerencial</div>
+        <h1>Desempenho Individual de Consultores</h1>
+        <p class="subtitle">Dashboard individual com acesso controlado por senha. Cada consultor visualiza apenas os seus próprios resultados.</p>
+      </div>
+
+      <div class="header-actions">
+        <div class="user-badge" id="loggedUserBadge">Consultor autenticado</div>
+      </div>
+
+      <div class="filters">
+        <div class="field">
+          <label for="fromDate">Data inicial</label>
+          <input type="date" id="fromDate" />
+        </div>
+        <div class="field">
+          <label for="toDate">Data final</label>
+          <input type="date" id="toDate" />
+        </div>
+        <div class="field hidden" id="consultantFilterField">
+          <label for="consultantFilter">Consultor</label>
+          <select id="consultantFilter"></select>
+        </div>
+        <button class="btn btn-primary" id="refreshBtn">Atualizar</button>
+      </div>
+    </section>
+
+    <section class="status-bar glass" id="statusSection">
+      <div class="status-meta">
+        <div class="meta-period">Período Meta: 16/03 a 31/03</div>
+        <div class="meta-levels">
+          <div class="meta-level">
+            <span class="meta-level-label">Inter</span>
+            <span class="meta-level-value" id="metaInterValue">70</span>
+            <span class="meta-level-reward" id="metaGanhoInterValue"></span>
+          </div>
+          <div class="meta-level highlight">
+            <span class="meta-level-label">Meta</span>
+            <span class="meta-level-value" id="metaMetaValue">80</span>
+            <span class="meta-level-reward" id="metaGanhoMetaValue"></span>
+          </div>
+          <div class="meta-level">
+            <span class="meta-level-label">Super</span>
+            <span class="meta-level-value" id="metaSuperValue">96</span>
+            <span class="meta-level-reward" id="metaGanhoSuperValue"></span>
+          </div>
+        </div>
+        <div class="meta-falta" id="metaRealizadosContainer">
+          <span class="meta-falta-label">Leads realizados</span>
+          <span class="meta-falta-value" id="metaRealizadosValue">—</span>
+        </div>
+        <div class="meta-falta" id="metaFaltaContainer">
+          <span class="meta-falta-label">Falta para a meta</span>
+          <span class="meta-falta-value" id="metaFaltaValue">—</span>
+        </div>
+      </div>
+      <div class="status-bar-top">
+        <div class="status-dot"></div>
+        <div class="status-text" id="statusText">Pronto para consultar os dados.</div>
+        <div class="status-text" id="lastUpdate">Sem atualização ainda.</div>
+      </div>
+    </section>
+
+    <section class="premiacao-card glass hidden" id="premiacaoCard">
+      <div class="premiacao-badge">
+        <span class="premiacao-badge-label">Premiação</span>
+        <span class="premiacao-badge-value" id="premiacaoTotal">—</span>
+      </div>
+      <div class="premiacao-details">
+        <div class="premiacao-detail">
+          <span class="premiacao-detail-label">Categoria</span>
+          <span class="premiacao-detail-value" id="premiacaoCategoria">—</span>
+        </div>
+        <div class="premiacao-detail">
+          <span class="premiacao-detail-label">Valor / Lead</span>
+          <span class="premiacao-detail-value" id="premiacaoValorLead">—</span>
+        </div>
+        <div class="premiacao-detail">
+          <span class="premiacao-detail-label">Leads</span>
+          <span class="premiacao-detail-value" id="premiacaoLeads">—</span>
+        </div>
+        <div class="premiacao-detail">
+          <span class="premiacao-detail-label">Cálculo</span>
+          <span class="premiacao-detail-value" id="premiacaoCalculo" style="font-size:0.82rem;color:var(--muted)">—</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="summary-grid hidden" id="summaryGrid">
+      <div class="metric-card glass total">
+        <div class="metric-label">Leads atendidos</div>
+        <div class="metric-value" id="totalAttended">0</div>
+        <div class="metric-foot">Ganhos + perdidos no período</div>
+      </div>
+      <div class="metric-card glass gains">
+        <div class="metric-label">Total de ganhos</div>
+        <div class="metric-value" id="totalGains">0</div>
+        <div class="metric-foot">Soma geral no período</div>
+      </div>
+      <div class="metric-card glass conversion">
+        <div class="metric-label">Conversão geral</div>
+        <div class="metric-value" id="totalConversion">0%</div>
+        <div class="metric-foot">Ganho / total atendido</div>
+      </div>
+    </section>
+
+    <section class="panel glass" id="comparisonSection">
+      <div class="panel-header">
+        <div>
+          <div class="panel-title">Comparativo por consultor</div>
+          <div class="panel-subtitle">Ganhos, perdidos e conversão do consultor autenticado em Anhanguera e Sumaré.</div>
+        </div>
+      </div>
+      <div id="comparisonContainer" class="comparison-grid">
+        <div class="empty-state" style="grid-column: 1 / -1;">Faça login para visualizar seus dados.</div>
+      </div>
+    </section>
+
+    <section class="faculties hidden" id="facultiesContainer"></section>
+
+    <div class="footer-note">Dashboard conectado ao webhook do n8n com dados oficiais do Supabase.</div>
+  </main>
+
+  <script>
+    const WEBHOOK_URL = 'https://n8n-new-n8n.ca31ey.easypanel.host/webhook/dashboard_individual_bu';
+    const SESSION_KEY = 'dashboard_consultor_auth';
+    const FETCH_TIMEOUT_MS = 20000;
+
+    const _params = new URLSearchParams(window.location.search);
+    const SUPABASE_URL = _params.get('sbUrl') || '';
+    const SUPABASE_ANON_KEY = _params.get('sbAnon') || '';
+    const SUPABASE_SERVICE_KEY = _params.get('sbService') || '';
+
+    let META_INTER = 70;
+    let META_LEADS = 80;
+    let META_SUPER = 96;
+    let META_INICIO = '';
+    let META_FIM = '';
+    let GANHO_INTER = 0;
+    let GANHO_META = 0;
+    let GANHO_SUPER = 0;
+
+    const AUTH_TABLE = 'Senhas Dash';
+    const MAX_LOGIN_ATTEMPTS = 5;
+    const LOCKOUT_DURATION_MS = 5 * 60 * 1000;
+    let loginAttempts = 0;
+    let lockoutUntil = 0;
+
+    function supaAuthHeaders() {
+      return {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
+        'Accept': 'application/json'
+      };
+    }
+
+    async function supaValidateLogin(usuario, senha) {
+      var url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(AUTH_TABLE)
+        + '?Usuario=eq.' + encodeURIComponent(usuario)
+        + '&Senha=eq.' + encodeURIComponent(senha)
+        + '&select=Usuario,acesso';
+      var res = await fetch(url, { headers: supaAuthHeaders() });
+      if (!res.ok) return null;
+      var rows = await res.json();
+      if (!rows.length) return null;
+      return { user: rows[0].Usuario, isAdmin: rows[0].acesso === 'ADMIN' };
+    }
+
+    async function supaFetchUserNames() {
+      var url = SUPABASE_URL + '/rest/v1/' + encodeURIComponent(AUTH_TABLE)
+        + '?select=Usuario&order=Usuario.asc';
+      var res = await fetch(url, { headers: supaAuthHeaders() });
+      if (!res.ok) return [];
+      var rows = await res.json();
+      return rows.map(function(r) { return r.Usuario; });
+    }
+
+    const state = {
+      raw: [],
+      normalized: [],
+      selectedConsultant: '',
+      authenticatedConsultant: '',
+      isAdmin: false
+    };
+
+    const els = {
+      loginScreen: document.getElementById('loginScreen'),
+      dashboardApp: document.getElementById('dashboardApp'),
+      loginConsultant: document.getElementById('loginConsultant'),
+      loginPassword: document.getElementById('loginPassword'),
+      loginBtn: document.getElementById('loginBtn'),
+      loginError: document.getElementById('loginError'),
+      webhookWarning: document.getElementById('webhookWarning'),
+      logoutBtn: document.getElementById('logoutBtn'),
+      loggedUserBadge: document.getElementById('loggedUserBadge'),
+      summaryGrid: document.getElementById('summaryGrid'),
+      fromDate: document.getElementById('fromDate'),
+      toDate: document.getElementById('toDate'),
+      consultantFilterField: document.getElementById('consultantFilterField'),
+      consultantFilter: document.getElementById('consultantFilter'),
+      refreshBtn: document.getElementById('refreshBtn'),
+      statusText: document.getElementById('statusText'),
+      lastUpdate: document.getElementById('lastUpdate'),
+      metaFaltaValue: document.getElementById('metaFaltaValue'),
+      metaFaltaContainer: document.getElementById('metaFaltaContainer'),
+      metaRealizadosValue: document.getElementById('metaRealizadosValue'),
+      totalGains: document.getElementById('totalGains'),
+      totalAttended: document.getElementById('totalAttended'),
+      totalConversion: document.getElementById('totalConversion'),
+      comparisonContainer: document.getElementById('comparisonContainer'),
+      facultiesContainer: document.getElementById('facultiesContainer')
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function setSelectOptions(selectEl, values, includeAll = false, allLabel = 'Todos os consultores', placeholder = '') {
+      if (!selectEl) return;
+      selectEl.replaceChildren();
+
+      if (placeholder) {
+        const ph = document.createElement('option');
+        ph.value = '';
+        ph.textContent = placeholder;
+        selectEl.appendChild(ph);
+      } else if (includeAll) {
+        const allOption = document.createElement('option');
+        allOption.value = '';
+        allOption.textContent = allLabel;
+        selectEl.appendChild(allOption);
+      }
+
+      values.forEach(function(value) {
+        const option = document.createElement('option');
+        option.value = value;
+        option.textContent = value;
+        selectEl.appendChild(option);
+      });
+
+      selectEl.value = '';
+    }
+
+    function formatNumber(value) {
+      return new Intl.NumberFormat('pt-BR').format(Number(value || 0));
+    }
+
+    function formatPercent(value) {
+      return String(Number(value || 0).toFixed(1)) + '%';
+    }
+
+    function normalizeFlag(value) {
+      const v = String(value || '').trim().toLowerCase();
+      if (v.includes('anh')) return 'Anhanguera';
+      if (v.includes('sum')) return 'Sumaré';
+      return value || 'Não informado';
+    }
+
+    function calcConversion(gains, losses) {
+      const total = Number(gains || 0) + Number(losses || 0);
+      if (!total) return 0;
+      return (Number(gains || 0) / total) * 100;
+    }
+
+    function extractArray(payload) {
+      if (Array.isArray(payload)) return payload;
+      if (Array.isArray(payload && payload.data)) return payload.data;
+      if (Array.isArray(payload && payload.items)) return payload.items;
+      if (Array.isArray(payload && payload.result)) return payload.result;
+      if (Array.isArray(payload && payload.consultores)) return payload.consultores;
+      return [];
+    }
+
+    function normalizeItem(item) {
+      const gains = Number(item.ganhos ?? item.total_ganhos ?? item.gain ?? item.won ?? 0);
+      const losses = Number(item.perdidos ?? item.total_perdidos ?? item.losses ?? item.lost ?? 0);
+      const totalAttended = Number(item.total_atendido ?? item.total_atendidos ?? item.total_leads ?? item.total ?? (gains + losses)) || (gains + losses);
+      const conversion = Number(item.conversao ?? item.conversion ?? item.conversao_pct ?? calcConversion(gains, losses));
+
+      return {
+        nome: String(item.consultor ?? item.nome ?? item.nome_consultor ?? 'Sem nome'),
+        bandeira: normalizeFlag(item.bandeira ?? item.faculdade ?? item.brand ?? item.unidade),
+        ganhos: gains,
+        perdidos: losses,
+        total_atendido: totalAttended,
+        conversao: Number.isFinite(conversion) ? conversion : calcConversion(gains, losses)
+      };
+    }
+
+    function updateStatus(message, isError = false) {
+      const show = Boolean(message);
+
+      if (els.statusText) {
+        els.statusText.textContent = show ? message : '';
+        els.statusText.classList.toggle('hidden', !show);
+      }
+
+      const dot = document.querySelector('.status-dot');
+      if (!dot) return;
+      dot.classList.toggle('hidden', !show);
+
+      if (!show) return;
+
+      dot.style.background = isError ? 'var(--danger)' : 'var(--success)';
+      dot.style.boxShadow = isError
+        ? '0 0 16px rgba(251, 113, 133, 0.7)'
+        : '0 0 16px rgba(74, 222, 128, 0.7)';
+    }
+
+    function showWebhookWarning(show) {
+      if (!els.webhookWarning) return;
+      els.webhookWarning.classList.toggle('hidden', !show);
+    }
+
+    async function populateLoginConsultants() {
+      var names = await supaFetchUserNames();
+      setSelectOptions(els.loginConsultant, names, false, '', 'Selecione seu nome');
+    }
+
+    function populateConsultantFilter(items) {
+      const uniqueNames = Array.from(new Set(items.map(function(item) {
+        return item.nome;
+      }).filter(Boolean))).sort(function(a, b) {
+        return a.localeCompare(b, 'pt-BR');
+      });
+      setSelectOptions(els.consultantFilter, uniqueNames, true, 'Todos os consultores');
+    }
+
+    function applyAuthenticatedConsultant() {
+      if (els.loggedUserBadge) {
+        els.loggedUserBadge.textContent = state.isAdmin
+          ? 'Admin autenticado: ' + state.authenticatedConsultant
+          : 'Consultor autenticado: ' + state.authenticatedConsultant;
+      }
+
+      if (state.isAdmin) {
+        if (els.consultantFilterField) els.consultantFilterField.classList.remove('hidden');
+        populateConsultantFilter(state.normalized);
+      } else {
+        state.selectedConsultant = state.authenticatedConsultant;
+        if (els.consultantFilterField) els.consultantFilterField.classList.add('hidden');
+      }
+
+    }
+
+    function getFilteredItems() {
+      if (!state.authenticatedConsultant) return [];
+      if (!state.isAdmin) return state.normalized.filter(function(item) { return item.nome === state.authenticatedConsultant; });
+      if (!state.selectedConsultant) return state.normalized;
+      return state.normalized.filter(function(item) { return item.nome === state.selectedConsultant; });
+    }
+
+    async function fetchMetaFromSupabase() {
+      try {
+        var today = new Date().toISOString().slice(0, 10);
+        var metaHeaders = {
+          'apikey': SUPABASE_SERVICE_KEY,
+          'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
+          'Accept': 'application/json'
+        };
+        var url = SUPABASE_URL + '/rest/v1/Meta_ANH?select=*&Inicio=lte.' + today + '&fim=gte.' + today + '&order=id.desc&limit=1';
+        var response = await fetch(url, { headers: metaHeaders });
+        if (!response.ok) throw new Error('HTTP ' + response.status);
+        var rows = await response.json();
+
+        if (!rows || rows.length === 0) {
+          var fallbackUrl = SUPABASE_URL + '/rest/v1/Meta_ANH?select=*&order=id.desc&limit=1';
+          var fallbackResp = await fetch(fallbackUrl, { headers: metaHeaders });
+          if (fallbackResp.ok) rows = await fallbackResp.json();
+        }
+
+        if (rows && rows.length > 0) {
+          var row = rows[0];
+          META_INTER = Number(row.Inter) || META_INTER;
+          META_LEADS = Number(row.Meta) || META_LEADS;
+          META_SUPER = Number(row.Super) || META_SUPER;
+          META_INICIO = row.Inicio || '';
+          META_FIM = row.fim || '';
+          GANHO_INTER = Number(row['Ganho Inter']) || 0;
+          GANHO_META = Number(row['Ganho Meta']) || 0;
+          GANHO_SUPER = Number(row['Ganho Super']) || 0;
+          updateMetaPeriodLabel();
+          updateMetaBalloon();
+          updateGanhoLabels();
+          console.log('Meta carregada do Supabase:', { Inter: META_INTER, Meta: META_LEADS, Super: META_SUPER, Inicio: META_INICIO, fim: META_FIM, Ganho_Inter: GANHO_INTER, Ganho_Meta: GANHO_META, Ganho_Super: GANHO_SUPER });
+        } else {
+          console.warn('Tabela Meta_ANH vazia, usando valores padrão.');
+        }
+      } catch (err) {
+        console.error('Erro ao buscar Meta_ANH do Supabase:', err);
+      }
+    }
+
+    function updateMetaPeriodLabel() {
+      var periodEl = document.querySelector('.meta-period');
+      if (!periodEl) return;
+      if (META_INICIO && META_FIM) {
+        var fmtDate = function(dateStr) {
+          var parts = dateStr.split('-');
+          return parts[2] + '/' + parts[1];
+        };
+        periodEl.textContent = 'Período Meta: ' + fmtDate(META_INICIO) + ' a ' + fmtDate(META_FIM);
+      }
+    }
+
+    function formatCurrency(value) {
+      if (!value) return '';
+      return 'R$ ' + Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function updateGanhoLabels() {
+      var gInterEl = document.getElementById('metaGanhoInterValue');
+      var gMetaEl = document.getElementById('metaGanhoMetaValue');
+      var gSuperEl = document.getElementById('metaGanhoSuperValue');
+      if (gInterEl) gInterEl.textContent = GANHO_INTER ? formatCurrency(GANHO_INTER) : '';
+      if (gMetaEl) gMetaEl.textContent = GANHO_META ? formatCurrency(GANHO_META) : '';
+      if (gSuperEl) gSuperEl.textContent = GANHO_SUPER ? formatCurrency(GANHO_SUPER) : '';
+    }
+
+    function updatePremiacao(leads) {
+      var card = document.getElementById('premiacaoCard');
+      var totalEl = document.getElementById('premiacaoTotal');
+      var catEl = document.getElementById('premiacaoCategoria');
+      var valorLeadEl = document.getElementById('premiacaoValorLead');
+      var leadsEl = document.getElementById('premiacaoLeads');
+      var calculoEl = document.getElementById('premiacaoCalculo');
+      if (!card) return;
+
+      if (leads == null || (state.isAdmin && !state.selectedConsultant)) {
+        card.classList.add('hidden');
+        return;
+      }
+
+      var categoria = '';
+      var valorPorLead = 0;
+
+      if (leads >= META_SUPER && GANHO_SUPER > 0) {
+        categoria = 'Super';
+        valorPorLead = GANHO_SUPER;
+      } else if (leads >= META_LEADS && GANHO_META > 0) {
+        categoria = 'Meta';
+        valorPorLead = GANHO_META;
+      } else if (leads > 0 && GANHO_INTER > 0) {
+        categoria = 'Inter';
+        valorPorLead = GANHO_INTER;
+      }
+
+      if (!categoria || valorPorLead === 0) {
+        card.classList.remove('hidden');
+        if (totalEl) totalEl.textContent = 'R$ 0,00';
+        if (catEl) { catEl.textContent = leads === 0 ? 'Sem leads' : '—'; catEl.className = 'premiacao-detail-value tier-pending'; }
+        if (valorLeadEl) valorLeadEl.textContent = '—';
+        if (leadsEl) leadsEl.textContent = formatNumber(leads);
+        if (calculoEl) calculoEl.textContent = leads === 0 ? 'Registre leads para gerar premiação' : '—';
+        return;
+      }
+
+      var totalPremiacao = leads * valorPorLead;
+      card.classList.remove('hidden');
+      if (totalEl) totalEl.textContent = formatCurrency(totalPremiacao);
+      if (catEl) { catEl.textContent = categoria; catEl.className = 'premiacao-detail-value tier-active'; }
+      if (valorLeadEl) valorLeadEl.textContent = formatCurrency(valorPorLead);
+      if (leadsEl) leadsEl.textContent = formatNumber(leads);
+      if (calculoEl) calculoEl.textContent = formatNumber(leads) + ' × ' + formatCurrency(valorPorLead);
+    }
+
+    function updateMetaBalloon() {
+      if (!els.metaFaltaValue) return;
+
+      var interEl = document.getElementById('metaInterValue');
+      var metaEl = document.getElementById('metaMetaValue');
+      var superEl = document.getElementById('metaSuperValue');
+      if (interEl) interEl.textContent = formatNumber(META_INTER);
+      if (metaEl) metaEl.textContent = formatNumber(META_LEADS);
+      if (superEl) superEl.textContent = formatNumber(META_SUPER);
+
+      if (state.isAdmin && !state.selectedConsultant) {
+        if (els.metaRealizadosValue) els.metaRealizadosValue.textContent = '—';
+        els.metaFaltaValue.textContent = '—';
+        els.metaFaltaValue.classList.remove('achieved');
+        var labelEl = els.metaFaltaContainer ? els.metaFaltaContainer.querySelector('.meta-falta-label') : null;
+        if (labelEl) labelEl.textContent = 'Falta para a meta';
+        updatePremiacao(null);
+        return;
+      }
+
+      var itemsForScope = getFilteredItems();
+      var ganhosCurrent = itemsForScope
+        .filter(function(item) { return item.bandeira === 'Anhanguera' || item.bandeira === 'Sumaré'; })
+        .reduce(function(sum, item) { return sum + Number(item.ganhos || 0); }, 0);
+
+      if (els.metaRealizadosValue) els.metaRealizadosValue.textContent = formatNumber(ganhosCurrent);
+      updatePremiacao(ganhosCurrent);
+
+      var faltam = Math.max(0, META_LEADS - ganhosCurrent);
+      var labelEl2 = els.metaFaltaContainer ? els.metaFaltaContainer.querySelector('.meta-falta-label') : null;
+
+      if (faltam === 0) {
+        els.metaFaltaValue.textContent = '✓';
+        els.metaFaltaValue.classList.add('achieved');
+        if (labelEl2) labelEl2.textContent = 'Meta atingida!';
+      } else {
+        els.metaFaltaValue.textContent = formatNumber(faltam);
+        els.metaFaltaValue.classList.remove('achieved');
+        if (labelEl2) labelEl2.textContent = 'Falta para a meta';
+      }
+    }
+
+    function renderSummary(items) {
+      const gains = items.reduce(function(sum, item) { return sum + item.ganhos; }, 0);
+      const losses = items.reduce(function(sum, item) { return sum + item.perdidos; }, 0);
+      const total = gains + losses;
+      const conversion = calcConversion(gains, losses);
+
+      if (els.totalGains) els.totalGains.textContent = formatNumber(gains);
+      if (els.totalAttended) els.totalAttended.textContent = formatNumber(total);
+      if (els.totalConversion) els.totalConversion.textContent = formatPercent(conversion);
+    }
+
+    function renderFaculties(items) {
+      if (!els.facultiesContainer) return;
+      if (!items.length) {
+        els.facultiesContainer.innerHTML = '<div class="empty-state">Nenhum dado disponível para exibir por faculdade.</div>';
+        return;
+      }
+
+      const grouped = items.reduce(function(acc, item) {
+        const key = item.bandeira;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+      }, {});
+
+      const ordered = ['Anhanguera', 'Sumaré'].concat(Object.keys(grouped).filter(function(k) {
+        return ['Anhanguera', 'Sumaré'].indexOf(k) === -1;
+      }));
+
+      els.facultiesContainer.innerHTML = ordered
+        .filter(function(flag) { return grouped[flag] && grouped[flag].length; })
+        .map(function(flag) {
+          const list = grouped[flag];
+          const totalGanhos = list.reduce(function(sum, item) { return sum + item.ganhos; }, 0);
+          const totalPerdidos = list.reduce(function(sum, item) { return sum + item.perdidos; }, 0);
+          const totalAtendidos = totalGanhos + totalPerdidos;
+          const conv = calcConversion(totalGanhos, totalPerdidos);
+          const sectionClass = flag === 'Anhanguera' ? 'faculty-anhanguera' : 'faculty-sumare';
+          const colorVar = flag === 'Anhanguera' ? 'var(--anhanguera)' : 'var(--sumare)';
+
+          const cards = list.map(function(item) {
+            return '<div class="consultant-card">'
+              + '<div class="consultant-top">'
+              + '<div><div class="consultant-name">' + escapeHtml(item.nome) + '</div><div class="consultant-flag">' + escapeHtml(item.bandeira) + '</div></div>'
+              + '<div class="badge-conv">' + formatPercent(item.conversao) + '</div>'
+              + '</div>'
+              + '<div class="meta">Ganhos: ' + formatNumber(item.ganhos) + ' • Perdidos: ' + formatNumber(item.perdidos) + ' • Atendidos: ' + formatNumber(item.total_atendido) + '</div>'
+              + '</div>';
+          }).join('');
+
+          return '<section class="faculty-section glass ' + sectionClass + '">'
+            + '<div class="faculty-header">'
+            + '<div class="faculty-title-wrap">'
+            + '<div class="faculty-pill" style="color:' + colorVar + '; background:' + colorVar + '"></div>'
+            + '<div><div class="faculty-name">' + escapeHtml(flag) + '</div><div class="panel-subtitle">Resumo por bandeira</div></div>'
+            + '</div>'
+            + '<div class="faculty-stats">'
+            + '<div class="faculty-stat">Atendidos: <strong>' + formatNumber(totalAtendidos) + '</strong></div>'
+            + '<div class="faculty-stat">Ganhos: <strong>' + formatNumber(totalGanhos) + '</strong></div>'
+            + '<div class="faculty-stat">Conversão: <strong>' + formatPercent(conv) + '</strong></div>'
+            + '</div>'
+            + '</div>'
+            + '<div class="consultants-grid">' + cards + '</div>'
+            + '</section>';
+        }).join('');
+    }
+
+    function renderComparison(items, performanceErrorMessage) {
+      if (!els.comparisonContainer) return;
+      if (performanceErrorMessage) {
+        els.comparisonContainer.innerHTML = '<div class="error-state" style="grid-column: 1 / -1;">' + escapeHtml(performanceErrorMessage) + '</div>';
+        return;
+      }
+
+      const selected = state.isAdmin ? state.selectedConsultant : state.authenticatedConsultant;
+      if (!selected) {
+        els.comparisonContainer.innerHTML = state.isAdmin
+          ? '<div class="empty-state" style="grid-column: 1 / -1;">Selecione um consultor para visualizar o comparativo entre Anhanguera e Sumaré.</div>'
+          : '<div class="empty-state" style="grid-column: 1 / -1;">Faça login para visualizar seus dados.</div>';
+        return;
+      }
+
+      const byFlag = {
+        Anhanguera: items.find(function(item) { return item.nome === selected && item.bandeira === 'Anhanguera'; }) || null,
+        'Sumaré': items.find(function(item) { return item.nome === selected && item.bandeira === 'Sumaré'; }) || null
+      };
+
+      var flagsWithData = ['Anhanguera', 'Sumaré'].filter(function(flag) { return byFlag[flag] !== null; });
+
+      if (flagsWithData.length === 0) {
+        els.comparisonContainer.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;">Sem dados para ' + escapeHtml(selected) + ' no período selecionado.</div>';
+        return;
+      }
+
+      els.comparisonContainer.innerHTML = flagsWithData.map(function(flag) {
+        const item = byFlag[flag];
+        const sectionClass = flag === 'Anhanguera' ? 'faculty-anhanguera' : 'faculty-sumare';
+        return '<div class="comparison-card ' + sectionClass + '">'
+          + '<div class="comparison-head"><div class="comparison-title">' + escapeHtml(flag) + '</div><div class="comparison-badge">' + escapeHtml(selected) + '</div></div>'
+          + '<div class="comparison-metrics">'
+          + '<div class="comparison-metric"><div class="comparison-metric-label">Ganhos</div><div class="comparison-metric-value">' + formatNumber(item.ganhos) + '</div></div>'
+          + '<div class="comparison-metric"><div class="comparison-metric-label">Perdidos</div><div class="comparison-metric-value">' + formatNumber(item.perdidos) + '</div></div>'
+          + '<div class="comparison-metric"><div class="comparison-metric-label">Conversão</div><div class="comparison-metric-value">' + formatPercent(item.conversao) + '</div></div>'
+          + '</div>'
+          + '</div>';
+      }).join('');
+    }
+
+    function renderAll(performanceErrorMessage = '') {
+      const filteredItems = getFilteredItems();
+
+      if (state.isAdmin) {
+        const hasConsultantSelected = Boolean(state.selectedConsultant);
+        if (hasConsultantSelected) {
+          if (els.summaryGrid) els.summaryGrid.classList.add('hidden');
+          if (els.facultiesContainer) els.facultiesContainer.classList.add('hidden');
+          renderComparison(state.normalized, performanceErrorMessage);
+        } else {
+          if (performanceErrorMessage) {
+            if (els.summaryGrid) els.summaryGrid.classList.add('hidden');
+            if (els.facultiesContainer) els.facultiesContainer.classList.add('hidden');
+            renderComparison([], performanceErrorMessage);
+          } else {
+            renderSummary(filteredItems);
+            if (els.summaryGrid) els.summaryGrid.classList.remove('hidden');
+            if (els.facultiesContainer) els.facultiesContainer.classList.remove('hidden');
+            renderFaculties(filteredItems);
+            if (els.comparisonContainer) {
+              els.comparisonContainer.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;">Selecione um consultor no filtro para comparar Anhanguera e Sumaré.</div>';
+            }
+          }
+        }
+        return;
+      }
+
+      if (els.summaryGrid) els.summaryGrid.classList.add('hidden');
+      if (els.facultiesContainer) els.facultiesContainer.classList.add('hidden');
+      renderComparison(state.normalized, performanceErrorMessage);
+    }
+
+    async function fetchWithTimeout(url, options, timeoutMs) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(function() { controller.abort(); }, timeoutMs);
+      try {
+        return await fetch(url, Object.assign({}, options, { signal: controller.signal }));
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    }
+
+    async function parseWebhookResponse(response) {
+      const rawText = await response.text();
+      const trimmed = rawText.trim();
+      const contentType = String(response.headers.get('content-type') || '').toLowerCase();
+
+      if (!trimmed) throw new Error('Webhook respondeu vazio');
+      if (contentType.indexOf('application/json') !== -1) {
+        try {
+          return JSON.parse(trimmed);
+        } catch (e) {
+          throw new Error('Webhook retornou JSON inválido');
+        }
+      }
+
+      try {
+        return JSON.parse(trimmed);
+      } catch (e) {
+        const preview = trimmed.slice(0, 120).replace(/\s+/g, ' ');
+        throw new Error('Webhook não retornou JSON. Resposta recebida: ' + preview);
+      }
+    }
+
+    async function requestWebhook(url, body) {
+      const response = await fetchWithTimeout(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body)
+      }, FETCH_TIMEOUT_MS);
+
+      if (!response.ok) throw new Error('Falha HTTP ' + response.status + ' em ' + url);
+      return parseWebhookResponse(response);
+    }
+
+    async function fetchDashboardData() {
+      if (!state.authenticatedConsultant) return;
+
+      const from = els.fromDate ? els.fromDate.value : '';
+      const to = els.toDate ? els.toDate.value : '';
+      const scopedConsultant = state.isAdmin ? (state.selectedConsultant || null) : state.authenticatedConsultant;
+      const requestBody = {
+        from: from,
+        to: to,
+        consultor: scopedConsultant,
+        isAdmin: state.isAdmin
+      };
+
+      updateStatus('Consultando webhook e carregando dados do período...', false);
+      showWebhookWarning(false);
+      if (els.refreshBtn) {
+        els.refreshBtn.disabled = true;
+        els.refreshBtn.textContent = 'Carregando...';
+      }
+      if (els.comparisonContainer) {
+        els.comparisonContainer.innerHTML = '<div class="loading-state" style="grid-column: 1 / -1;">Buscando dados no webhook...</div>';
+      }
+
+      try {
+        const payload = await requestWebhook(WEBHOOK_URL, requestBody);
+        const rows = extractArray(payload).map(normalizeItem);
+
+        state.raw = payload;
+        state.normalized = state.isAdmin ? rows : rows.filter(function(item) { return item.nome === state.authenticatedConsultant; });
+
+        applyAuthenticatedConsultant();
+        renderAll('');
+        updateMetaBalloon();
+
+        const scopeLabel = state.isAdmin
+          ? (state.selectedConsultant ? 'consultor ' + state.selectedConsultant : 'todos os consultores')
+          : state.authenticatedConsultant;
+
+        // Mensagem de sucesso específica removida (exibida apenas enquanto carrega/erro)
+        updateStatus('', false);
+        if (els.lastUpdate) {
+          els.lastUpdate.textContent = 'Última atualização: ' + new Date().toLocaleString('pt-BR');
+        }
+      } catch (error) {
+        const isAbort = error && error.name === 'AbortError';
+        const message = isAbort ? 'Tempo limite excedido ao consultar o webhook' : (error && error.message ? error.message : 'Erro desconhecido ao buscar dashboard');
+        console.error('Erro ao buscar dashboard:', error);
+        updateStatus('Erro ao carregar dados: ' + message, true);
+        showWebhookWarning(true);
+        renderAll('Erro ao carregar desempenho: ' + message);
+      } finally {
+        if (els.refreshBtn) {
+          els.refreshBtn.disabled = false;
+          els.refreshBtn.textContent = 'Atualizar';
+        }
+      }
+    }
+
+    function setDefaultRange() {
+      if (META_INICIO && META_FIM) {
+        if (els.fromDate) els.fromDate.value = META_INICIO;
+        if (els.toDate) els.toDate.value = META_FIM;
+        return;
+      }
+      const now = new Date();
+      const end = new Date(now);
+      const start = new Date(now);
+      start.setDate(start.getDate() - 7);
+      if (els.fromDate) els.fromDate.value = start.toISOString().slice(0, 10);
+      if (els.toDate) els.toDate.value = end.toISOString().slice(0, 10);
+    }
+
+    function saveSession(consultor) {
+      sessionStorage.setItem(SESSION_KEY, consultor);
+    }
+
+    function clearSession() {
+      sessionStorage.removeItem(SESSION_KEY);
+    }
+
+    function showLogin() {
+      if (els.loginScreen) els.loginScreen.classList.remove('hidden');
+      if (els.dashboardApp) els.dashboardApp.classList.add('hidden');
+      if (els.loginPassword) els.loginPassword.value = '';
+      if (els.loginError) els.loginError.classList.add('hidden');
+    }
+
+    function showDashboard() {
+      if (els.loginScreen) els.loginScreen.classList.add('hidden');
+      if (els.dashboardApp) els.dashboardApp.classList.remove('hidden');
+    }
+
+    async function login() {
+      const now = Date.now();
+      if (now < lockoutUntil) {
+        const remainSec = Math.ceil((lockoutUntil - now) / 1000);
+        if (els.loginError) {
+          els.loginError.textContent = 'Muitas tentativas. Tente novamente em ' + remainSec + ' segundos.';
+          els.loginError.classList.remove('hidden');
+        }
+        return;
+      }
+
+      const consultor = els.loginConsultant ? els.loginConsultant.value : '';
+      const senha = els.loginPassword ? els.loginPassword.value : '';
+
+      if (!consultor || !senha) {
+        if (els.loginError) {
+          els.loginError.textContent = 'Consultor ou senha inválidos.';
+          els.loginError.classList.remove('hidden');
+        }
+        return;
+      }
+
+      if (els.loginBtn) els.loginBtn.disabled = true;
+
+      var result = await supaValidateLogin(consultor, senha);
+
+      if (!result) {
+        loginAttempts++;
+        if (loginAttempts >= MAX_LOGIN_ATTEMPTS) {
+          lockoutUntil = Date.now() + LOCKOUT_DURATION_MS;
+          loginAttempts = 0;
+          if (els.loginError) {
+            els.loginError.textContent = 'Bloqueado por excesso de tentativas. Aguarde 5 minutos.';
+            els.loginError.classList.remove('hidden');
+          }
+        } else {
+          var restantes = MAX_LOGIN_ATTEMPTS - loginAttempts;
+          if (els.loginError) {
+            els.loginError.textContent = 'Consultor ou senha inválidos. ' + restantes + ' tentativa(s) restante(s).';
+            els.loginError.classList.remove('hidden');
+          }
+        }
+        if (els.loginBtn) els.loginBtn.disabled = false;
+        return;
+      }
+
+      loginAttempts = 0;
+      if (els.loginError) els.loginError.classList.add('hidden');
+      state.authenticatedConsultant = result.user;
+      state.isAdmin = result.isAdmin;
+      state.selectedConsultant = state.isAdmin ? '' : result.user;
+      saveSession(consultor);
+      applyAuthenticatedConsultant();
+      showDashboard();
+      if (els.loginBtn) els.loginBtn.disabled = false;
+      await fetchMetaFromSupabase();
+      fetchDashboardData();
+    }
+
+    function logout() {
+      clearSession();
+      state.raw = [];
+      state.normalized = [];
+      state.selectedConsultant = '';
+      state.authenticatedConsultant = '';
+      state.isAdmin = false;
+      setSelectOptions(els.consultantFilter, [], true, 'Todos os consultores');
+      if (els.consultantFilterField) els.consultantFilterField.classList.add('hidden');
+      if (els.summaryGrid) els.summaryGrid.classList.add('hidden');
+      if (els.facultiesContainer) els.facultiesContainer.classList.add('hidden');
+      showWebhookWarning(false);
+      if (els.comparisonContainer) {
+        els.comparisonContainer.innerHTML = '<div class="empty-state" style="grid-column: 1 / -1;">Faça login para visualizar seus dados.</div>';
+      }
+      showLogin();
+    }
+
+    async function restoreSession() {
+      var autoUser = _params.get('autouser');
+      var autoAdmin = _params.get('isAdmin') === '1';
+      if (autoUser) {
+        state.authenticatedConsultant = autoUser;
+        state.isAdmin = autoAdmin;
+        state.selectedConsultant = autoAdmin ? '' : autoUser;
+        saveSession(autoUser);
+        applyAuthenticatedConsultant();
+        showDashboard();
+        await fetchMetaFromSupabase();
+        fetchDashboardData();
+        return;
+      }
+
+      var consultor = sessionStorage.getItem(SESSION_KEY);
+      if (!consultor) {
+        showLogin();
+        return;
+      }
+
+      state.authenticatedConsultant = consultor;
+      state.isAdmin = false;
+      state.selectedConsultant = consultor;
+      applyAuthenticatedConsultant();
+      showDashboard();
+      await fetchMetaFromSupabase();
+      fetchDashboardData();
+    }
+
+    function runSelfTests() {
+      console.assert(Boolean(els.loginConsultant), 'Teste: loginConsultant existe');
+      console.assert(calcConversion(10, 0) === 100, 'Teste: conversão 10/0');
+      console.assert(calcConversion(0, 10) === 0, 'Teste: conversão 0/10');
+      console.assert(normalizeFlag('anhanguera') === 'Anhanguera', 'Teste: normalizeFlag Anhanguera');
+    }
+
+    if (els.loginBtn) els.loginBtn.addEventListener('click', login);
+    if (els.loginPassword) {
+      els.loginPassword.addEventListener('keydown', function(event) {
+        if (event.key === 'Enter') login();
+      });
+    }
+    if (els.logoutBtn) els.logoutBtn.addEventListener('click', logout);
+    if (els.refreshBtn) els.refreshBtn.addEventListener('click', fetchDashboardData);
+    if (els.consultantFilter) {
+      els.consultantFilter.addEventListener('change', function(event) {
+        state.selectedConsultant = event.target.value;
+        fetchDashboardData();
+      });
+    }
+    populateLoginConsultants();
+    setDefaultRange();
+    runSelfTests();
+    restoreSession();
+  </script>
+</body>
+</html>
