@@ -656,17 +656,45 @@
         justify-content: center;
         border-right: none;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+        padding: 14px 16px;
+        font-size: 0.72rem;
       }
       .meta-levels {
         min-width: 100%;
         justify-content: center;
+        flex-wrap: wrap;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
       }
+      .meta-level {
+        min-width: 0;
+        flex: 1 1 25%;
+        padding: 12px 8px;
+      }
+      .meta-level-value {
+        font-size: 1.25rem;
+      }
+      .meta-level-label {
+        font-size: 0.62rem;
+      }
+      .meta-level-reward {
+        font-size: 0.6rem;
+      }
       .meta-falta {
-        min-width: 100%;
-        padding: 18px;
+        min-width: 50%;
+        flex: 1;
+        padding: 14px 12px;
         border-left: none;
         margin-left: 0;
+        border-top: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .meta-falta + .meta-falta {
+        border-left: 1px solid rgba(255, 255, 255, 0.06);
+      }
+      .meta-falta-value {
+        font-size: 1.6rem;
+      }
+      .meta-falta-label {
+        font-size: 0.6rem;
       }
     }
 
@@ -764,17 +792,34 @@
     @media (max-width: 700px) {
       .premiacao-card {
         flex-wrap: wrap;
+        min-height: auto;
       }
       .premiacao-badge {
         width: 100%;
+        min-width: unset;
         border-right: none;
         border-bottom: 1px solid rgba(74, 222, 128, 0.12);
+        padding: 16px 20px;
+        flex-direction: row;
+        gap: 10px;
+      }
+      .premiacao-badge-value {
+        font-size: 1.5rem;
       }
       .premiacao-details {
         flex-wrap: wrap;
+        width: 100%;
       }
       .premiacao-detail {
         min-width: 50%;
+        flex: 1 1 calc(50% - 1px);
+        padding: 12px 14px;
+      }
+      .premiacao-detail-label {
+        font-size: 0.6rem;
+      }
+      .premiacao-detail-value {
+        font-size: 0.95rem;
       }
     }
 
@@ -990,9 +1035,48 @@
     }
 
     @media (max-width: 640px) {
-      body { padding: 16px; }
-      .login-card, .header, .panel, .faculty-section, .metric-card, .comparison-card { padding: 18px; }
+      body { padding: 12px; }
+      .container { gap: 14px; }
+      .login-card, .header, .panel, .faculty-section, .metric-card, .comparison-card { padding: 16px; }
+      .header { border-radius: 20px; padding: 18px; gap: 12px; }
+      .header h1 { font-size: 1.1rem; }
+      .header-actions { width: 100%; justify-content: space-between; }
+      .filters { width: 100%; flex-direction: column; gap: 10px; }
+      .filters .field { width: 100%; min-width: 0; }
       .comparison-grid, .comparison-metrics { grid-template-columns: 1fr; }
+      .summary-grid { gap: 10px; }
+      .consultants-grid { grid-template-columns: 1fr; gap: 10px; }
+      .status-bar { border-radius: 18px; }
+      .status-bar-top { padding: 10px 14px; font-size: 0.75rem; gap: 6px; flex-wrap: wrap; }
+      .status-text { font-size: 0.72rem; }
+      .metric-value { font-size: 1.6rem; }
+      .metric-label { font-size: 0.8rem; margin-bottom: 10px; }
+      .metric-card { min-height: 110px; padding: 16px; border-radius: 16px; }
+      .panel-title { font-size: 1rem; }
+      .panel { border-radius: 18px; padding: 16px; }
+      .faculty-name { font-size: 1rem; }
+      .faculty-section { border-radius: 18px; padding: 16px; }
+      .faculty-stats { gap: 8px; }
+      .faculty-stat { padding: 8px 10px; font-size: 0.82rem; }
+      .consultant-card { border-radius: 16px; padding: 14px; gap: 12px; }
+    }
+
+    @media (max-width: 420px) {
+      body { padding: 8px; }
+      .meta-level {
+        flex: 1 1 50%;
+        padding: 10px 6px;
+      }
+      .meta-level-value { font-size: 1.1rem; }
+      .meta-falta-value { font-size: 1.3rem; }
+      .premiacao-badge-value { font-size: 1.3rem; }
+      .premiacao-detail { padding: 10px 8px; }
+      .premiacao-detail-value { font-size: 0.85rem; }
+      .metric-value { font-size: 1.4rem; }
+      .login-card { padding: 20px 16px; border-radius: 20px; }
+      .login-card h1 { font-size: 1.15rem; }
+      .consultant-card { padding: 14px; }
+      .comparison-card { padding: 14px; }
     }
   </style>
 </head>
