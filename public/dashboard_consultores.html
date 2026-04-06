@@ -230,9 +230,244 @@
       box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
     }
 
+    .btn-cadastrar-lead {
+      background: linear-gradient(135deg, #d4a832, #b8912a);
+      box-shadow: 0 8px 20px rgba(212, 168, 50, 0.25);
+      font-size: 0.9rem;
+      padding: 10px 20px;
+      white-space: nowrap;
+    }
+
+    .btn-cadastrar-lead:hover {
+      box-shadow: 0 12px 28px rgba(212, 168, 50, 0.35);
+    }
+
     .btn-secondary {
       background: rgba(255, 255, 255, 0.06);
       border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    /* Modal Cadastro Lead */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.25s ease;
+      padding: 20px;
+    }
+
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .modal-card {
+      background: #0f1b2d;
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 32px 28px 28px;
+      width: 100%;
+      max-width: 460px;
+      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5);
+      transform: translateY(20px) scale(0.97);
+      transition: transform 0.25s ease;
+    }
+
+    .modal-overlay.active .modal-card {
+      transform: translateY(0) scale(1);
+    }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .modal-title {
+      color: #d4a832;
+      font-size: 1.3rem;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--muted);
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 1.2rem;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    .modal-close:hover {
+      background: rgba(255, 255, 255, 0.12);
+      color: #fff;
+    }
+
+    .modal-form-group {
+      margin-bottom: 16px;
+    }
+
+    .modal-form-group label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .modal-form-group input,
+    .modal-form-group select {
+      width: 100%;
+      padding: 12px 14px;
+      font-family: inherit;
+      font-size: 0.95rem;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 12px;
+      background: rgba(255, 255, 255, 0.04);
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    .modal-form-group input::placeholder {
+      color: var(--muted-2);
+    }
+
+    .modal-form-group input:focus,
+    .modal-form-group select:focus {
+      border-color: #d4a832;
+    }
+
+    .modal-form-group select {
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239aa7c7' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
+    }
+
+    .modal-form-group select option {
+      background: #0f1b2d;
+      color: var(--text);
+    }
+
+    .modal-radio-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px 16px;
+      margin-top: 4px;
+    }
+
+    .modal-radio-option {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .modal-radio-option input[type="radio"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: 12px;
+      height: 12px;
+      min-width: 12px;
+      min-height: 12px;
+      max-width: 12px;
+      max-height: 12px;
+      border: 1.5px solid var(--muted-2);
+      border-radius: 50%;
+      background: transparent;
+      cursor: pointer;
+      position: relative;
+      transition: border-color 0.2s;
+      flex-shrink: 0;
+      margin: 0;
+      padding: 0;
+    }
+
+    .modal-radio-option input[type="radio"]:checked {
+      border-color: #d4a832;
+    }
+
+    .modal-radio-option input[type="radio"]:checked::after {
+      content: '';
+      width: 5px;
+      height: 5px;
+      background: #d4a832;
+      border-radius: 50%;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .modal-btn-submit {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      font-family: inherit;
+      font-size: 1rem;
+      font-weight: 700;
+      color: #fff;
+      background: linear-gradient(135deg, #d4a832, #b8912a);
+      border: none;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: box-shadow 0.2s, transform 0.15s;
+      margin-top: 8px;
+    }
+
+    .modal-btn-submit:hover {
+      box-shadow: 0 8px 24px rgba(212, 168, 50, 0.35);
+      transform: translateY(-1px);
+    }
+
+    .modal-btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .modal-success {
+      text-align: center;
+      padding: 20px 0;
+    }
+
+    .modal-success-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+
+    .modal-success h3 {
+      color: var(--success);
+      font-size: 1.2rem;
+      margin-bottom: 6px;
+    }
+
+    .modal-success p {
+      color: var(--muted);
+      font-size: 0.9rem;
     }
 
     .status-bar {
@@ -798,6 +1033,7 @@
       </div>
 
       <div class="header-actions">
+        <button class="btn btn-cadastrar-lead" id="btnCadastrarLead" onclick="openCadastroModal()">+ Cadastrar Lead</button>
         <div class="user-badge" id="loggedUserBadge">Consultor autenticado</div>
       </div>
 
@@ -822,6 +1058,11 @@
       <div class="status-meta">
         <div class="meta-period">Período Meta: 16/03 a 31/03</div>
         <div class="meta-levels">
+          <div class="meta-level">
+            <span class="meta-level-label">Abaixo</span>
+            <span class="meta-level-value" id="metaAbaixoValue">—</span>
+            <span class="meta-level-reward" id="metaGanhoAbaixoValue"></span>
+          </div>
           <div class="meta-level">
             <span class="meta-level-label">Inter</span>
             <span class="meta-level-value" id="metaInterValue">70</span>
@@ -919,6 +1160,80 @@
     <div class="footer-note">Dashboard conectado ao webhook do n8n com dados oficiais do Supabase.</div>
   </main>
 
+  <!-- Modal Cadastro de Lead -->
+  <div class="modal-overlay" id="cadastroModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div class="modal-title">Cadastrar Lead</div>
+        <button class="modal-close" onclick="closeCadastroModal()">&times;</button>
+      </div>
+
+      <form id="formCadastroLead" onsubmit="submitCadastroLead(event)">
+        <div id="cadastroFormFields">
+          <div class="modal-form-group">
+            <label>Nome Completo</label>
+            <input type="text" id="cadNomeCompleto" placeholder="Nome do candidato" required>
+          </div>
+
+          <div class="modal-form-group">
+            <label>Celular</label>
+            <input type="tel" id="cadCelular" placeholder="(00) 00000-0000" required>
+          </div>
+
+          <div class="modal-form-group">
+            <label>Responsável</label>
+            <input type="hidden" id="cadResponsavelValue">
+            <input type="text" id="cadResponsavelDisplay" readonly
+              style="background:rgba(255,255,255,0.02);color:var(--muted);cursor:default;">
+            <select id="cadResponsavelSelect" style="display:none">
+              <option value="" disabled selected>Selecione o consultor</option>
+              <option value="14774452">Camilla</option>
+              <option value="14774444">Rahi</option>
+              <option value="14774008">Gabriel</option>
+              <option value="15025792">Gabriel Messias</option>
+            </select>
+          </div>
+
+          <div class="modal-form-group">
+            <label>Tipo de Contato</label>
+            <div class="modal-radio-group">
+              <label class="modal-radio-option">
+                <input type="radio" name="cadTipoContato" value="presencial" checked>
+                Presencial/Telefone
+              </label>
+              <label class="modal-radio-option">
+                <input type="radio" name="cadTipoContato" value="indicacao">
+                Indicação
+              </label>
+            </div>
+          </div>
+
+          <div class="modal-form-group">
+            <label>Unidade</label>
+            <div class="modal-radio-group">
+              <label class="modal-radio-option">
+                <input type="radio" name="cadUnidade" value="anhanguera" checked>
+                Anhanguera
+              </label>
+              <label class="modal-radio-option">
+                <input type="radio" name="cadUnidade" value="sumare">
+                Sumaré
+              </label>
+            </div>
+          </div>
+
+          <button type="submit" class="modal-btn-submit" id="cadBtnSubmit">Cadastrar</button>
+        </div>
+
+        <div id="cadastroSuccess" class="modal-success hidden">
+          <div class="modal-success-icon">✓</div>
+          <h3>Lead cadastrado!</h3>
+          <p>O cadastro foi enviado com sucesso.</p>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <script>
     const WEBHOOK_URL = 'https://n8n-new-n8n.ca31ey.easypanel.host/webhook/dashboard_individual_bu';
     const SESSION_KEY = 'dashboard_consultor_auth';
@@ -929,11 +1244,13 @@
     const SUPABASE_ANON_KEY = _params.get('sbAnon') || '';
     const SUPABASE_SERVICE_KEY = _params.get('sbService') || '';
 
+    let META_ABAIXO = 1;
     let META_INTER = 70;
     let META_LEADS = 80;
     let META_SUPER = 96;
     let META_INICIO = '';
     let META_FIM = '';
+    let GANHO_ABAIXO = 0;
     let GANHO_INTER = 0;
     let GANHO_META = 0;
     let GANHO_SUPER = 0;
@@ -989,7 +1306,7 @@
       loginBtn: document.getElementById('loginBtn'),
       loginError: document.getElementById('loginError'),
       webhookWarning: document.getElementById('webhookWarning'),
-      logoutBtn: document.getElementById('logoutBtn'),
+      logoutBtn: null,
       loggedUserBadge: document.getElementById('loggedUserBadge'),
       summaryGrid: document.getElementById('summaryGrid'),
       fromDate: document.getElementById('fromDate'),
@@ -1178,18 +1495,25 @@
 
         if (rows && rows.length > 0) {
           var row = rows[0];
+          var abaixoRaw = row.Abaixo != null ? row.Abaixo : row.abaixo;
+          var abaixoNum = Number(abaixoRaw);
+          META_ABAIXO = Number.isFinite(abaixoNum) && abaixoNum >= 0 ? abaixoNum : 1;
+          if (META_ABAIXO === 0) META_ABAIXO = 1;
           META_INTER = Number(row.Inter) || META_INTER;
           META_LEADS = Number(row.Meta) || META_LEADS;
           META_SUPER = Number(row.Super) || META_SUPER;
           META_INICIO = row.Inicio || '';
           META_FIM = row.fim || '';
+          var ga = row['Ganho Abaixo'] != null ? row['Ganho Abaixo'] : row['Ganho_Abaixo'];
+          if (ga == null) ga = row.ganho_abaixo;
+          GANHO_ABAIXO = Number(ga) || 0;
           GANHO_INTER = Number(row['Ganho Inter']) || 0;
           GANHO_META = Number(row['Ganho Meta']) || 0;
           GANHO_SUPER = Number(row['Ganho Super']) || 0;
           updateMetaPeriodLabel();
           updateMetaBalloon();
           updateGanhoLabels();
-          console.log('Meta carregada do Supabase:', { Inter: META_INTER, Meta: META_LEADS, Super: META_SUPER, Inicio: META_INICIO, fim: META_FIM, Ganho_Inter: GANHO_INTER, Ganho_Meta: GANHO_META, Ganho_Super: GANHO_SUPER });
+          console.log('Meta carregada do Supabase:', { Abaixo: META_ABAIXO, Inter: META_INTER, Meta: META_LEADS, Super: META_SUPER, Inicio: META_INICIO, fim: META_FIM, Ganho_Abaixo: GANHO_ABAIXO, Ganho_Inter: GANHO_INTER, Ganho_Meta: GANHO_META, Ganho_Super: GANHO_SUPER });
         } else {
           console.warn('Tabela Meta_ANH vazia, usando valores padrão.');
         }
@@ -1211,14 +1535,18 @@
     }
 
     function formatCurrency(value) {
-      if (!value) return '';
+      if (value == null) return '';
       return 'R$ ' + Number(value).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
     function updateGanhoLabels() {
+      var gAbaixoEl = document.getElementById('metaGanhoAbaixoValue');
       var gInterEl = document.getElementById('metaGanhoInterValue');
       var gMetaEl = document.getElementById('metaGanhoMetaValue');
       var gSuperEl = document.getElementById('metaGanhoSuperValue');
+      var vAbaixoEl = document.getElementById('metaAbaixoValue');
+      if (vAbaixoEl) vAbaixoEl.textContent = formatNumber(META_ABAIXO);
+      if (gAbaixoEl) gAbaixoEl.textContent = GANHO_ABAIXO ? formatCurrency(GANHO_ABAIXO) : '';
       if (gInterEl) gInterEl.textContent = GANHO_INTER ? formatCurrency(GANHO_INTER) : '';
       if (gMetaEl) gMetaEl.textContent = GANHO_META ? formatCurrency(GANHO_META) : '';
       if (gSuperEl) gSuperEl.textContent = GANHO_SUPER ? formatCurrency(GANHO_SUPER) : '';
@@ -1247,9 +1575,12 @@
       } else if (leads >= META_LEADS && GANHO_META > 0) {
         categoria = 'Meta';
         valorPorLead = GANHO_META;
-      } else if (leads > 0 && GANHO_INTER > 0) {
+      } else if (leads >= META_INTER && GANHO_INTER > 0) {
         categoria = 'Inter';
         valorPorLead = GANHO_INTER;
+      } else if (META_INTER > 0 && leads > 0 && leads < META_INTER && GANHO_ABAIXO > 0) {
+        categoria = 'Abaixo';
+        valorPorLead = GANHO_ABAIXO;
       }
 
       if (!categoria || valorPorLead === 0) {
@@ -1274,9 +1605,11 @@
     function updateMetaBalloon() {
       if (!els.metaFaltaValue) return;
 
+      var abaixoEl = document.getElementById('metaAbaixoValue');
       var interEl = document.getElementById('metaInterValue');
       var metaEl = document.getElementById('metaMetaValue');
       var superEl = document.getElementById('metaSuperValue');
+      if (abaixoEl) abaixoEl.textContent = formatNumber(META_ABAIXO);
       if (interEl) interEl.textContent = formatNumber(META_INTER);
       if (metaEl) metaEl.textContent = formatNumber(META_LEADS);
       if (superEl) superEl.textContent = formatNumber(META_SUPER);
@@ -1580,8 +1913,8 @@
       if (els.toDate) els.toDate.value = end.toISOString().slice(0, 10);
     }
 
-    function saveSession(consultor) {
-      sessionStorage.setItem(SESSION_KEY, consultor);
+    function saveSession(consultor, isAdmin) {
+      sessionStorage.setItem(SESSION_KEY, JSON.stringify({ user: consultor, isAdmin: !!isAdmin }));
     }
 
     function clearSession() {
@@ -1651,7 +1984,7 @@
       state.authenticatedConsultant = result.user;
       state.isAdmin = result.isAdmin;
       state.selectedConsultant = state.isAdmin ? '' : result.user;
-      saveSession(consultor);
+      saveSession(result.user, result.isAdmin);
       applyAuthenticatedConsultant();
       showDashboard();
       if (els.loginBtn) els.loginBtn.disabled = false;
@@ -1684,7 +2017,7 @@
         state.authenticatedConsultant = autoUser;
         state.isAdmin = autoAdmin;
         state.selectedConsultant = autoAdmin ? '' : autoUser;
-        saveSession(autoUser);
+        saveSession(autoUser, autoAdmin);
         applyAuthenticatedConsultant();
         showDashboard();
         await fetchMetaFromSupabase();
@@ -1692,15 +2025,16 @@
         return;
       }
 
-      var consultor = sessionStorage.getItem(SESSION_KEY);
-      if (!consultor) {
-        showLogin();
-        return;
-      }
+      var raw = sessionStorage.getItem(SESSION_KEY);
+      if (!raw) { showLogin(); return; }
 
-      state.authenticatedConsultant = consultor;
-      state.isAdmin = false;
-      state.selectedConsultant = consultor;
+      var session;
+      try { session = JSON.parse(raw); } catch (e) { session = { user: raw, isAdmin: false }; }
+      if (!session.user) { showLogin(); return; }
+
+      state.authenticatedConsultant = session.user;
+      state.isAdmin = !!session.isAdmin;
+      state.selectedConsultant = session.isAdmin ? '' : session.user;
       applyAuthenticatedConsultant();
       showDashboard();
       await fetchMetaFromSupabase();
@@ -1732,6 +2066,115 @@
     setDefaultRange();
     runSelfTests();
     restoreSession();
+
+    // --- Cadastro de Lead (Modal) ---
+    var cadCelularInput = document.getElementById('cadCelular');
+    if (cadCelularInput) {
+      cadCelularInput.addEventListener('input', function(e) {
+        var v = e.target.value.replace(/\D/g, '');
+        if (v.length > 11) v = v.slice(0, 11);
+        if (v.length > 7) v = '(' + v.slice(0,2) + ') ' + v.slice(2,7) + '-' + v.slice(7);
+        else if (v.length > 2) v = '(' + v.slice(0,2) + ') ' + v.slice(2);
+        else if (v.length > 0) v = '(' + v;
+        e.target.value = v;
+      });
+    }
+
+    function openCadastroModal() {
+      var modal = document.getElementById('cadastroModal');
+      var form = document.getElementById('formCadastroLead');
+      var fields = document.getElementById('cadastroFormFields');
+      var success = document.getElementById('cadastroSuccess');
+      if (form) form.reset();
+      if (fields) fields.classList.remove('hidden');
+      if (success) success.classList.add('hidden');
+      if (modal) modal.classList.add('active');
+
+      var sel = document.getElementById('cadResponsavelSelect');
+      var display = document.getElementById('cadResponsavelDisplay');
+      var hiddenVal = document.getElementById('cadResponsavelValue');
+
+      var CONSULTOR_IDS = {
+        'camilla': '14774452',
+        'rahi': '14774444',
+        'gabriel': '14774008',
+        'gabriel messias': '15025792'
+      };
+
+      if (state.isAdmin) {
+        if (display) display.style.display = 'none';
+        if (sel) { sel.style.display = ''; sel.value = ''; }
+        if (hiddenVal) hiddenVal.value = '';
+        sel.onchange = function() { if (hiddenVal) hiddenVal.value = sel.value; };
+      } else {
+        if (sel) sel.style.display = 'none';
+        if (display) {
+          display.style.display = '';
+          display.value = state.authenticatedConsultant || '';
+        }
+        var userName = (state.authenticatedConsultant || '').toLowerCase().trim();
+        var id = CONSULTOR_IDS[userName] || '';
+        if (hiddenVal) hiddenVal.value = id;
+      }
+    }
+
+    function closeCadastroModal() {
+      var modal = document.getElementById('cadastroModal');
+      if (modal) modal.classList.remove('active');
+    }
+
+    document.getElementById('cadastroModal').addEventListener('click', function(e) {
+      if (e.target === this) closeCadastroModal();
+    });
+
+    async function submitCadastroLead(e) {
+      e.preventDefault();
+
+      var responsavelValue = document.getElementById('cadResponsavelValue').value || '';
+
+      if (!responsavelValue) {
+        alert('Responsável não identificado. Selecione o consultor.');
+        return;
+      }
+
+      var btn = document.getElementById('cadBtnSubmit');
+      var original = btn.textContent;
+      btn.textContent = 'Enviando...';
+      btn.disabled = true;
+
+      var dados = {
+        nome: document.getElementById('cadNomeCompleto').value,
+        celular: document.getElementById('cadCelular').value,
+        responsavel: responsavelValue,
+        responsavel_nome: state.authenticatedConsultant || '',
+        tipoContato: document.querySelector('input[name="cadTipoContato"]:checked').value,
+        unidade: document.querySelector('input[name="cadUnidade"]:checked').value
+      };
+
+      try {
+        var response = await fetch('https://n8n-new-n8n.ca31ey.easypanel.host/webhook/preenchimeto_cadstro', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(dados)
+        });
+
+        if (response.ok) {
+          document.getElementById('cadastroFormFields').classList.add('hidden');
+          document.getElementById('cadastroSuccess').classList.remove('hidden');
+          setTimeout(closeCadastroModal, 2000);
+        } else {
+          var result = await response.json().catch(function() { return {}; });
+          var msg = result.message || result.menssage || result.mensagem || 'Erro ao cadastrar. Tente novamente.';
+          alert(msg);
+        }
+      } catch (err) {
+        console.error('Erro no cadastro:', err);
+        alert('Erro de conexão. Verifique sua internet e tente novamente.');
+      } finally {
+        btn.textContent = original;
+        btn.disabled = false;
+      }
+    }
   </script>
 </body>
 </html>

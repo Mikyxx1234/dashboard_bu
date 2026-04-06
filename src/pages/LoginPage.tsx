@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BarChart3 } from 'lucide-react';
+import { BarChart3, Eye, EyeOff } from 'lucide-react';
 import { useAuth, fetchConsultantNames } from '../contexts/AuthContext';
 
 export function LoginPage() {
@@ -11,6 +11,7 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [names, setNames] = useState<string[]>([]);
+  const [showPw, setShowPw] = useState(false);
 
   useEffect(() => {
     fetchConsultantNames().then(setNames);
@@ -83,14 +84,24 @@ export function LoginPage() {
             <label className="mb-2 block text-sm font-medium text-gray-300">
               Senha
             </label>
-            <input
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Digite sua senha"
-              className="w-full rounded-xl border border-white/10 bg-gray-800 px-4 py-3 text-sm text-white placeholder-gray-500 outline-none transition-colors focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
-            />
+            <div className="relative">
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Digite sua senha"
+                className="w-full rounded-xl border border-white/10 bg-gray-800 px-4 py-3 pr-12 text-sm text-white placeholder-gray-500 outline-none transition-colors focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPw((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 transition-colors hover:text-white"
+                tabIndex={-1}
+              >
+                {showPw ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              </button>
+            </div>
           </div>
 
           {error && (

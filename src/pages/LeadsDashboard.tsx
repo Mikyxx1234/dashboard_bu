@@ -12,6 +12,7 @@ export function LeadsDashboard() {
       sbUrl: env.SUPABASE_URL,
       sbAnon: env.SUPABASE_ANON_KEY,
       sbService: env.SUPABASE_SERVICE_KEY,
+      _t: String(Date.now()),
     });
     return `/dashboard_consultores.html?${p.toString()}`;
   }, [user, isAdmin]);

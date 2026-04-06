@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Inbox, UserCheck, Users, ArrowUpDown } from 'lucide-react';
 
 const TABLE = 'distribuicao_academico_anh';
@@ -36,6 +36,8 @@ function AcademicoDistribuicao() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [toast, setToast] = useState({ show: false, message: '', success: true });
   const dirtyRef = useRef<Map<number, DirtyData>>(new Map());
+  const rowsRef = useRef<Responsavel[]>([]);
+  rowsRef.current = rows;
 
   const showToast = (message: string, success = true) => {
     setToast({ show: true, message, success });
@@ -102,7 +104,7 @@ function AcademicoDistribuicao() {
     }
   };
 
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     const dirty = dirtyRef.current;
     if (dirty.size === 0) {
       showToast('Nenhuma alteração para salvar', false);
@@ -110,7 +112,7 @@ function AcademicoDistribuicao() {
     }
 
     const changes = Array.from(dirty.entries()).map(([id, patch]) => {
-      const current = rows.find(r => r.id === id);
+      const current = rowsRef.current.find(r => r.id === id);
       return {
         id,
         almoco: patch.almoco !== undefined ? patch.almoco : (current?.almoco ?? null),
@@ -136,17 +138,22 @@ function AcademicoDistribuicao() {
       } else {
         showToast('Falha ao salvar alterações', false);
       }
-    } catch (e: any) {
+    } catch (e: unknown) {
       console.error('Erro ao salvar:', e);
       showToast('Erro ao salvar alterações', false);
     }
-  };
+  }, []);
+
+  const handleSaveRef = useRef(handleSave);
+  handleSaveRef.current = handleSave;
+  const runN8nRef = useRef(runN8nAndReload);
+  runN8nRef.current = runN8nAndReload;
 
   useEffect(() => {
     load();
 
-    const handleSalvarEvent = () => handleSave();
-    const handleAtualizarEvent = () => runN8nAndReload();
+    const handleSalvarEvent = () => handleSaveRef.current();
+    const handleAtualizarEvent = () => runN8nRef.current();
 
     window.addEventListener('academico-salvar', handleSalvarEvent);
     window.addEventListener('academico-atualizar', handleAtualizarEvent);
@@ -155,7 +162,6 @@ function AcademicoDistribuicao() {
       window.removeEventListener('academico-salvar', handleSalvarEvent);
       window.removeEventListener('academico-atualizar', handleAtualizarEvent);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleChange = (id: number, field: keyof DirtyData, value: any) => {

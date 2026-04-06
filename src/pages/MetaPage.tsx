@@ -2,13 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { Plus, Trash2, Save, RefreshCw, AlertCircle, CheckCircle2, Target, CalendarRange, Zap, TrendingUp, Award, DollarSign } from 'lucide-react';
 import { env } from '../config';
 
-function readHeaders() {
-  return {
-    apikey: env.SUPABASE_ANON_KEY,
-    Authorization: `Bearer ${env.SUPABASE_ANON_KEY}`,
-  };
-}
-
 function writeHeaders() {
   return {
     apikey: env.SUPABASE_SERVICE_KEY,
@@ -20,28 +13,52 @@ function writeHeaders() {
 
 interface MetaRow {
   id: number;
+  Abaixo?: number | null;
+  abaixo?: number | null;
   Inter: number | null;
   Meta: string | null;
   Super: number | null;
   Inicio: string | null;
   fim: string | null;
+  'Ganho Abaixo'?: number | null;
+  Ganho_Abaixo?: number | null;
+  ganho_abaixo?: number | null;
   'Ganho Inter': number | null;
   'Ganho Meta': number | null;
   'Ganho Super': number | null;
 }
 
 interface FormData {
+  Abaixo: string;
   Inter: string;
   Meta: string;
   Super: string;
   Inicio: string;
   fim: string;
+  GanhoAbaixo: string;
   GanhoInter: string;
   GanhoMeta: string;
   GanhoSuper: string;
 }
 
-const emptyForm: FormData = { Inter: '', Meta: '', Super: '', Inicio: '', fim: '', GanhoInter: '', GanhoMeta: '', GanhoSuper: '' };
+const emptyForm: FormData = {
+  Abaixo: '',
+  Inter: '',
+  Meta: '',
+  Super: '',
+  Inicio: '',
+  fim: '',
+  GanhoAbaixo: '',
+  GanhoInter: '',
+  GanhoMeta: '',
+  GanhoSuper: '',
+};
+
+function parseNum(v: string): number {
+  if (v === '' || v == null) return 0;
+  const n = Number(String(v).trim().replace(/\s/g, '').replace(',', '.'));
+  return Number.isFinite(n) ? n : 0;
+}
 
 export function MetaPage() {
   const [rows, setRows] = useState<MetaRow[]>([]);
@@ -56,10 +73,21 @@ export function MetaPage() {
     setLoading(true);
     setError('');
     try {
-      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/Meta_ANH?select=*&order=id.desc`, {
-        headers: readHeaders(),
+      // Mesma credencial de escrita: com RLS, SELECT só com anon costuma vir [] e a lista fica vazia.
+      const res = await fetch(`${env.SUPABASE_URL}/rest/v1/Meta_ANH?select=*&order=id.desc&limit=4`, {
+        headers: writeHeaders(),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const text = await res.text();
+        let detail = text;
+        try {
+          const j = JSON.parse(text) as { message?: string };
+          if (j.message) detail = j.message;
+        } catch {
+          /* ignore */
+        }
+        throw new Error(detail || `HTTP ${res.status}`);
+      }
       setRows(await res.json());
     } catch (err: unknown) {
       setError(`Erro ao carregar metas: ${err instanceof Error ? err.message : err}`);
@@ -79,11 +107,25 @@ export function MetaPage() {
   function startEdit(row: MetaRow) {
     setEditingId(row.id);
     setForm({
+      Abaixo:
+        row.Abaixo != null
+          ? String(row.Abaixo)
+          : row.abaixo != null
+            ? String(row.abaixo)
+            : '',
       Inter: row.Inter?.toString() ?? '',
       Meta: row.Meta ?? '',
       Super: row.Super?.toString() ?? '',
       Inicio: row.Inicio ?? '',
       fim: row.fim ?? '',
+      GanhoAbaixo:
+        row['Ganho Abaixo'] != null
+          ? String(row['Ganho Abaixo'])
+          : row.Ganho_Abaixo != null
+            ? String(row.Ganho_Abaixo)
+            : row.ganho_abaixo != null
+              ? String(row.ganho_abaixo)
+              : '',
       GanhoInter: row['Ganho Inter']?.toString() ?? '',
       GanhoMeta: row['Ganho Meta']?.toString() ?? '',
       GanhoSuper: row['Ganho Super']?.toString() ?? '',
@@ -107,35 +149,63 @@ export function MetaPage() {
     setError('');
     setSuccess('');
 
-    const body = {
-      Inter: Number(form.Inter),
+    const abaixoVal = form.Abaixo !== '' ? parseNum(form.Abaixo) : 1;
+    const ganhoAbaixoVal = form.GanhoAbaixo !== '' ? parseNum(form.GanhoAbaixo) : 0;
+
+    const baseBody: Record<string, string | number> = {
+      Inter: parseNum(form.Inter),
       Meta: form.Meta,
-      Super: Number(form.Super),
+      Super: parseNum(form.Super),
       Inicio: form.Inicio,
       fim: form.fim,
-      'Ganho Inter': form.GanhoInter ? Number(form.GanhoInter) : 0,
-      'Ganho Meta': form.GanhoMeta ? Number(form.GanhoMeta) : 0,
-      'Ganho Super': form.GanhoSuper ? Number(form.GanhoSuper) : 0,
+      'Ganho Inter': form.GanhoInter ? parseNum(form.GanhoInter) : 0,
+      'Ganho Meta': form.GanhoMeta ? parseNum(form.GanhoMeta) : 0,
+      'Ganho Super': form.GanhoSuper ? parseNum(form.GanhoSuper) : 0,
     };
 
+    /** Combinações nome de coluna no Postgres/Supabase (evita `ganho_abaixo` se a coluna for "Ganho Abaixo"). */
+    const saveVariants: Record<string, string | number>[] = [
+      { Abaixo: abaixoVal, 'Ganho Abaixo': ganhoAbaixoVal },
+      { Abaixo: abaixoVal, Ganho_Abaixo: ganhoAbaixoVal },
+      { abaixo: abaixoVal, 'Ganho Abaixo': ganhoAbaixoVal },
+      { abaixo: abaixoVal, Ganho_Abaixo: ganhoAbaixoVal },
+    ];
+
+    async function parseErrorDetail(res: Response): Promise<string> {
+      const text = await res.text();
+      try {
+        const j = JSON.parse(text) as { message?: string; hint?: string; details?: string };
+        return [j.message, j.hint, j.details].filter(Boolean).join(' — ') || text;
+      } catch {
+        return text || `HTTP ${res.status}`;
+      }
+    }
+
     try {
-      if (editingId !== null) {
-        const res = await fetch(
-          `${env.SUPABASE_URL}/rest/v1/Meta_ANH?id=eq.${editingId}`,
-          { method: 'PATCH', headers: writeHeaders(), body: JSON.stringify(body) },
-        );
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setSuccess('Meta atualizada com sucesso!');
-      } else {
-        const res = await fetch(`${env.SUPABASE_URL}/rest/v1/Meta_ANH`, {
-          method: 'POST',
+      const url =
+        editingId !== null
+          ? `${env.SUPABASE_URL}/rest/v1/Meta_ANH?id=eq.${editingId}`
+          : `${env.SUPABASE_URL}/rest/v1/Meta_ANH`;
+      const method = editingId !== null ? 'PATCH' : 'POST';
+
+      let res: Response | undefined;
+      let lastDetail = '';
+      for (const extra of saveVariants) {
+        res = await fetch(url, {
+          method,
           headers: writeHeaders(),
-          body: JSON.stringify(body),
+          body: JSON.stringify({ ...baseBody, ...extra }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        setSuccess('Nova meta criada com sucesso!');
+        if (res.ok) break;
+        lastDetail = await parseErrorDetail(res);
+        if (res.status !== 400) break;
       }
 
+      if (!res?.ok) {
+        throw new Error(lastDetail || 'Não foi possível salvar a meta.');
+      }
+
+      setSuccess(editingId !== null ? 'Meta atualizada com sucesso!' : 'Nova meta criada com sucesso!');
       setEditingId(null);
       setForm(emptyForm);
       await fetchRows();
@@ -269,6 +339,20 @@ export function MetaPage() {
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <div>
               <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-slate-400">
+                <Zap className="h-3.5 w-3.5 text-rose-400" />
+                Abaixo <span className="text-slate-600">(mín. leads p/ faixa abaixo da Inter)</span>
+              </label>
+              <input
+                type="number"
+                value={form.Abaixo}
+                onChange={(e) => handleChange('Abaixo', e.target.value)}
+                placeholder="Ex: 1"
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-slate-400">
                 <Zap className="h-3.5 w-3.5 text-amber-400" />
                 Inter <span className="text-slate-600">(mínimo)</span>
               </label>
@@ -340,6 +424,21 @@ export function MetaPage() {
             <div className="col-span-full mb-1 flex items-center gap-2">
               <DollarSign className="h-4 w-4 text-emerald-400" />
               <span className="text-sm font-semibold text-slate-300">Premiação por nível (R$)</span>
+            </div>
+
+            <div>
+              <label className="mb-1.5 flex items-center gap-2 text-sm font-medium text-slate-400">
+                <Zap className="h-3.5 w-3.5 text-rose-400" />
+                Ganho Abaixo <span className="text-slate-600">(R$ / lead na faixa abaixo da Inter)</span>
+              </label>
+              <input
+                type="number"
+                step="0.01"
+                value={form.GanhoAbaixo}
+                onChange={(e) => handleChange('GanhoAbaixo', e.target.value)}
+                placeholder="Ex: 3.00"
+                className={inputClass}
+              />
             </div>
 
             <div>
@@ -430,7 +529,8 @@ export function MetaPage() {
           <div className="border-b border-white/[0.06] px-6 py-5">
             <h2 className="text-lg font-semibold text-white">Metas Cadastradas</h2>
             <p className="mt-0.5 text-sm text-slate-500">
-              A meta com período ativo aparece automaticamente no Dashboard de Leads
+              A meta com período ativo aparece automaticamente no Dashboard de Leads. Exibindo apenas as{' '}
+              <span className="text-slate-400">4 metas mais recentes</span>.
             </p>
           </div>
 
@@ -450,9 +550,11 @@ export function MetaPage() {
                   <tr className="border-b border-white/[0.06] text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
                     <th className="px-6 py-3.5">Status</th>
                     <th className="px-6 py-3.5">Período</th>
+                    <th className="px-6 py-3.5 text-center">Abaixo</th>
                     <th className="px-6 py-3.5 text-center">Inter</th>
                     <th className="px-6 py-3.5 text-center">Meta</th>
                     <th className="px-6 py-3.5 text-center">Super</th>
+                    <th className="px-6 py-3.5 text-center">R$ Abaixo</th>
                     <th className="px-6 py-3.5 text-center">R$ Inter</th>
                     <th className="px-6 py-3.5 text-center">R$ Meta</th>
                     <th className="px-6 py-3.5 text-center">R$ Super</th>
@@ -486,6 +588,9 @@ export function MetaPage() {
                           {formatDate(row.Inicio)} — {formatDate(row.fim)}
                         </td>
                         <td className="px-6 py-4 text-center text-slate-400">
+                          {row.Abaixo ?? row.abaixo ?? '—'}
+                        </td>
+                        <td className="px-6 py-4 text-center text-slate-400">
                           {row.Inter ?? '—'}
                         </td>
                         <td className="px-6 py-4 text-center font-bold text-blue-400">
@@ -493,6 +598,11 @@ export function MetaPage() {
                         </td>
                         <td className="px-6 py-4 text-center text-slate-400">
                           {row.Super ?? '—'}
+                        </td>
+                        <td className="whitespace-nowrap px-6 py-4 text-center text-xs text-rose-300/90">
+                          {formatCurrency(
+                            row['Ganho Abaixo'] ?? row.Ganho_Abaixo ?? row.ganho_abaixo ?? null,
+                          )}
                         </td>
                         <td className="whitespace-nowrap px-6 py-4 text-center text-xs text-amber-400/80">
                           {formatCurrency(row['Ganho Inter'])}
