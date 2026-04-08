@@ -1,6 +1,42 @@
+import { useState, useEffect, useCallback } from 'react';
 import { NavLink } from 'react-router-dom';
-import { BarChart3, Target, Megaphone, Share2, Building2, LogOut, Settings2 } from 'lucide-react';
+import { BarChart3, Target, Megaphone, Share2, Building2, LogOut, Settings2, FileText } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { env } from '../config';
+
+function usePendingSuggestionCount(isAdmin: boolean, userName: string | null) {
+  const [count, setCount] = useState(0);
+  const check = useCallback(async () => {
+    try {
+      const base = env.SUPABASE_URL + '/rest/v1/Template_Sugestoes';
+      const headers: Record<string, string> = {
+        apikey: env.SUPABASE_SERVICE_KEY,
+        Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+      };
+      let url: string;
+      if (isAdmin) {
+        url = `${base}?select=id&status=eq.pending`;
+      } else {
+        url = `${base}?select=id&submittedBy=eq.${encodeURIComponent(userName || '')}&status=neq.pending&readByUser=eq.false`;
+      }
+      const res = await fetch(url, { headers });
+      if (res.ok) {
+        const rows = await res.json();
+        setCount(Array.isArray(rows) ? rows.length : 0);
+      } else {
+        setCount(0);
+      }
+    } catch { setCount(0); }
+  }, [isAdmin, userName]);
+
+  useEffect(() => {
+    check();
+    const interval = setInterval(check, 15000);
+    return () => clearInterval(interval);
+  }, [check]);
+
+  return count;
+}
 
 const allNavItems = [
   { to: '/', label: 'Dashboard de Leads', icon: BarChart3, adminOnly: false },
@@ -9,6 +45,7 @@ const allNavItems = [
   { to: '/distribuicao-anhanguera', label: 'Distribuição Anhanguera', icon: Building2, adminOnly: true },
   { to: '/distribuicao-sumare', label: 'Distribuição Sumaré', icon: Share2, adminOnly: true },
   { to: '/meta', label: 'Meta', icon: Settings2, adminOnly: true },
+  { to: '/templates-hub', label: 'Templates', icon: FileText, adminOnly: false },
 ];
 
 interface SidebarProps {
@@ -17,6 +54,7 @@ interface SidebarProps {
 
 export function Sidebar({ onNavigate }: SidebarProps) {
   const { user, isAdmin, logout } = useAuth();
+  const badgeCount = usePendingSuggestionCount(isAdmin, user);
 
   const navItems = isAdmin
     ? allNavItems
@@ -34,24 +72,32 @@ export function Sidebar({ onNavigate }: SidebarProps) {
       </div>
 
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {navItems.map((item) => (
-          <NavLink
-            key={item.to}
-            to={item.to}
-            end={item.to === '/'}
-            onClick={onNavigate}
-            className={({ isActive }) =>
-              `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
-                isActive
-                  ? 'bg-white/10 text-white'
-                  : 'text-gray-400 hover:bg-white/5 hover:text-white'
-              }`
-            }
-          >
-            <item.icon className="h-5 w-5" />
-            {item.label}
-          </NavLink>
-        ))}
+        {navItems.map((item) => {
+          const showBadge = item.to === '/templates-hub' && badgeCount > 0;
+          return (
+            <NavLink
+              key={item.to}
+              to={item.to}
+              end={item.to === '/'}
+              onClick={onNavigate}
+              className={({ isActive }) =>
+                `flex items-center gap-3 rounded-lg px-4 py-3 text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-white/10 text-white'
+                    : 'text-gray-400 hover:bg-white/5 hover:text-white'
+                }`
+              }
+            >
+              <item.icon className="h-5 w-5" />
+              {item.label}
+              {showBadge && (
+                <span className="ml-auto flex h-5 min-w-[20px] items-center justify-center rounded-full bg-blue-500 px-1.5 text-[10px] font-bold text-white">
+                  {badgeCount}
+                </span>
+              )}
+            </NavLink>
+          );
+        })}
       </nav>
 
       <div className="border-t border-gray-800 px-4 py-4">

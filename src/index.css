@@ -1,3 +1,69 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer components {
+  .templates-scope .btn-primary {
+    @apply text-white px-5 py-2.5 rounded-xl transition font-semibold text-sm inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    box-shadow: 0 4px 20px rgba(37, 99, 235, 0.35);
+  }
+  .templates-scope .btn-primary:hover {
+    filter: brightness(1.1);
+  }
+  .templates-scope .btn-secondary {
+    @apply px-4 py-2.5 rounded-xl text-sm font-medium inline-flex items-center gap-2 cursor-pointer transition;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #cbd5e1;
+  }
+  .templates-scope .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #f1f5f9;
+  }
+  .templates-scope .btn-danger {
+    @apply text-white px-4 py-2.5 rounded-xl transition font-medium text-sm inline-flex items-center gap-2 cursor-pointer;
+    background: linear-gradient(135deg, #dc2626, #ef4444);
+    box-shadow: 0 4px 20px rgba(239, 68, 68, 0.3);
+  }
+  .templates-scope .btn-danger:hover {
+    filter: brightness(1.1);
+  }
+  .templates-scope .btn-icon {
+    @apply p-2 rounded-lg transition cursor-pointer;
+    color: #94a3b8;
+  }
+  .templates-scope .btn-icon:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: #e2e8f0;
+  }
+  .templates-scope .card {
+    @apply rounded-2xl;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(24px);
+    border: 1px solid rgba(255, 255, 255, 0.07);
+    box-shadow: 0 8px 40px rgba(0, 0, 0, 0.25);
+  }
+  .templates-scope .input-field {
+    @apply w-full px-4 py-3 rounded-xl text-sm outline-none transition;
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    color: #e2e8f0;
+    color-scheme: dark;
+  }
+  .templates-scope .input-field::placeholder {
+    color: #64748b;
+  }
+  .templates-scope .input-field:focus {
+    border-color: rgba(37, 99, 235, 0.5);
+    box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.2);
+  }
+  .templates-scope select.input-field {
+    color-scheme: dark;
+    background: rgba(15, 23, 42, 0.8);
+  }
+  .templates-scope select.input-field option {
+    background: #1e293b;
+    color: #e2e8f0;
+  }
+}
