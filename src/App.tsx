@@ -10,6 +10,8 @@ import { MetaPage } from './pages/MetaPage';
 import AnhangueraDashboard from './pages/AnhangueraDashboard';
 import SumareDashboard from './pages/SumareDashboard';
 import TemplatesHub from './templates/TemplatesHub';
+import AcademicoDashboardPage from './pages/AcademicoDashboardPage';
+import AcademicoColaboradoresPage from './pages/AcademicoColaboradoresPage';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAuth();
@@ -31,6 +33,7 @@ export default function App() {
         <Routes>
           <Route path="/login" element={<LoginGuard />} />
           <Route path="/" element={<Layout />}>
+            {/* Comercial */}
             <Route index element={<LeadsDashboard />} />
             <Route path="resultado-geral" element={<AdminRoute><CampanhasMeta /></AdminRoute>} />
             <Route path="meta-campanhas" element={<AdminRoute><MetaCampanhas /></AdminRoute>} />
@@ -38,6 +41,9 @@ export default function App() {
             <Route path="distribuicao-sumare" element={<AdminRoute><SumareDashboard /></AdminRoute>} />
             <Route path="meta" element={<AdminRoute><MetaPage /></AdminRoute>} />
             <Route path="templates-hub/*" element={<TemplatesHub />} />
+            {/* Acadêmico */}
+            <Route path="academico" element={<AdminRoute><AcademicoDashboardPage /></AdminRoute>} />
+            <Route path="academico/colaboradores" element={<AdminRoute><AcademicoColaboradoresPage /></AdminRoute>} />
           </Route>
         </Routes>
       </AuthProvider>
