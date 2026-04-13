@@ -12,6 +12,7 @@ import SumareDashboard from './pages/SumareDashboard';
 import TemplatesHub from './templates/TemplatesHub';
 import AcademicoDashboardPage from './pages/AcademicoDashboardPage';
 import AcademicoColaboradoresPage from './pages/AcademicoColaboradoresPage';
+import FormatarPlanilhaPage from './pages/FormatarPlanilhaPage';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAuth();
@@ -41,6 +42,7 @@ export default function App() {
             <Route path="distribuicao-sumare" element={<AdminRoute><SumareDashboard /></AdminRoute>} />
             <Route path="meta" element={<AdminRoute><MetaPage /></AdminRoute>} />
             <Route path="templates-hub/*" element={<TemplatesHub />} />
+            <Route path="formatar-planilha" element={<AdminRoute><FormatarPlanilhaPage /></AdminRoute>} />
             {/* Acadêmico */}
             <Route path="academico" element={<AdminRoute><AcademicoDashboardPage /></AdminRoute>} />
             <Route path="academico/colaboradores" element={<AdminRoute><AcademicoColaboradoresPage /></AdminRoute>} />

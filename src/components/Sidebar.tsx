@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, Target, Megaphone, Share2, Building2, LogOut, Settings2, FileText, GraduationCap, Users } from 'lucide-react';
+import { BarChart3, Target, Megaphone, Share2, Building2, LogOut, Settings2, FileText, GraduationCap, Users, FileSpreadsheet } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { env } from '../config';
 
@@ -47,12 +47,14 @@ const comercialNavItems = [
   { to: '/distribuicao-anhanguera', label: 'Distribuição Anhanguera', icon: Building2, adminOnly: true },
   { to: '/distribuicao-sumare', label: 'Distribuição Sumaré', icon: Share2, adminOnly: true },
   { to: '/meta', label: 'Meta', icon: Settings2, adminOnly: true },
+  { to: '/formatar-planilha', label: 'Formatar Planilha', icon: FileSpreadsheet, adminOnly: true },
   { to: '/templates-hub', label: 'Templates', icon: FileText, adminOnly: false },
 ];
 
 const academicoNavItems = [
   { to: '/academico', label: 'Dashboard Alunos', icon: GraduationCap, adminOnly: true },
   { to: '/academico/colaboradores', label: 'Colaboradores', icon: Users, adminOnly: true },
+  { to: '/formatar-planilha', label: 'Formatar Planilha', icon: FileSpreadsheet, adminOnly: true },
   { to: '/templates-hub', label: 'Templates', icon: FileText, adminOnly: false },
 ];
 
