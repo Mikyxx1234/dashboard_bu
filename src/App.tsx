@@ -13,6 +13,8 @@ import TemplatesHub from './templates/TemplatesHub';
 import AcademicoDashboardPage from './pages/AcademicoDashboardPage';
 import AcademicoColaboradoresPage from './pages/AcademicoColaboradoresPage';
 import FormatarPlanilhaPage from './pages/FormatarPlanilhaPage';
+import BlogAdminPage from './pages/BlogAdminPage';
+import BlogCreatePage from './pages/BlogCreatePage';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAuth();
@@ -42,6 +44,9 @@ export default function App() {
             <Route path="distribuicao-sumare" element={<AdminRoute><SumareDashboard /></AdminRoute>} />
             <Route path="meta" element={<AdminRoute><MetaPage /></AdminRoute>} />
             <Route path="templates-hub/*" element={<TemplatesHub />} />
+            <Route path="blog-controle" element={<AdminRoute><BlogAdminPage /></AdminRoute>} />
+            <Route path="blog-controle/novo" element={<AdminRoute><BlogCreatePage /></AdminRoute>} />
+            <Route path="blog-controle/editar/:slug" element={<AdminRoute><BlogCreatePage /></AdminRoute>} />
             <Route path="formatar-planilha" element={<AdminRoute><FormatarPlanilhaPage /></AdminRoute>} />
             {/* Acadêmico */}
             <Route path="academico" element={<AdminRoute><AcademicoDashboardPage /></AdminRoute>} />
