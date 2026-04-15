@@ -1,4 +1,4 @@
-﻿import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { Layout } from './components/Layout';
@@ -15,7 +15,6 @@ import AcademicoColaboradoresPage from './pages/AcademicoColaboradoresPage';
 import FormatarPlanilhaPage from './pages/FormatarPlanilhaPage';
 import BlogAdminPage from './pages/BlogAdminPage';
 import BlogCreatePage from './pages/BlogCreatePage';
-import SessionsDashboard from './pages/SessionsDashboard';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAuth();
@@ -49,8 +48,7 @@ export default function App() {
             <Route path="blog-controle/novo" element={<AdminRoute><BlogCreatePage /></AdminRoute>} />
             <Route path="blog-controle/editar/:slug" element={<AdminRoute><BlogCreatePage /></AdminRoute>} />
             <Route path="formatar-planilha" element={<AdminRoute><FormatarPlanilhaPage /></AdminRoute>} />
-            <Route path="sessoes" element={<AdminRoute><SessionsDashboard /></AdminRoute>} />
-            {/* Academico */}
+            {/* Acadêmico */}
             <Route path="academico" element={<AdminRoute><AcademicoDashboardPage /></AdminRoute>} />
             <Route path="academico/colaboradores" element={<AdminRoute><AcademicoColaboradoresPage /></AdminRoute>} />
           </Route>
