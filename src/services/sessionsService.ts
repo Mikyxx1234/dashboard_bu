@@ -1,5 +1,3 @@
-const API_URL = 'https://banco-compose.6tqx2r.easypanel.host';
-
 export interface Session {
   id: string;
   session_id: string;
@@ -27,7 +25,7 @@ export async function fetchSessions(startDate?: string, endDate?: string): Promi
   if (endDate) params.set('end', endDate);
 
   const qs = params.toString() ? `?${params.toString()}` : '';
-  const res = await fetch(`${API_URL}/api/sessions/list${qs}`);
+  const res = await fetch(`/api/sessions/list${qs}`);
 
   if (!res.ok) throw new Error('Falha ao carregar sessões');
   return res.json();
