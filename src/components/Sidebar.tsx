@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { NavLink, useLocation, useNavigate } from 'react-router-dom';
-import { BarChart3, Target, Megaphone, Share2, Building2, LogOut, Settings2, FileText, GraduationCap, Users, FileSpreadsheet, BookOpen } from 'lucide-react';
+import { BarChart3, Target, Megaphone, Share2, Building2, LogOut, Settings2, FileText, GraduationCap, Users, FileSpreadsheet, BookOpen, Globe } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { env } from '../config';
 
@@ -50,6 +50,7 @@ const comercialNavItems = [
   { to: '/formatar-planilha', label: 'Formatar Planilha', icon: FileSpreadsheet, adminOnly: true },
   { to: '/templates-hub', label: 'Templates', icon: FileText, adminOnly: false },
   { to: '/blog-controle', label: 'Blog Controle', icon: BookOpen, adminOnly: true },
+  { to: '/sessoes', label: 'Sessões & UTMs', icon: Globe, adminOnly: true },
 ];
 
 const academicoNavItems = [
