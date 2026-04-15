@@ -1,7 +1,10 @@
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
+import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
 
+const __dirname = dirname(fileURLToPath(import.meta.url));
 const { Pool } = pg;
 
 const app = express();
@@ -9,7 +12,7 @@ app.use(cors());
 app.use(express.json());
 
 const pool = new Pool({
-  connectionString: 'postgres://postgres:%5E%26TN5Qkg3BTXpW%23eeqHj%40E@168.231.99.126:3232/site_anhanguera?sslmode=disable',
+  connectionString: process.env.DATABASE_URL || 'postgres://postgres:%5E%26TN5Qkg3BTXpW%23eeqHj%40E@168.231.99.126:3232/site_anhanguera?sslmode=disable',
 });
 
 app.get('/api/sessions/list', async (req, res) => {
@@ -38,4 +41,11 @@ app.get('/api/sessions/list', async (req, res) => {
   }
 });
 
-app.listen(3001, () => console.log('API sessions rodando na porta 3001'));
+app.use(express.static(join(__dirname, 'dist')));
+
+app.get('*', (req, res) => {
+  res.sendFile(join(__dirname, 'dist', 'index.html'));
+});
+
+const PORT = process.env.PORT || 3001;
+app.listen(PORT, '0.0.0.0', () => console.log(`Dashboard rodando na porta ${PORT}`));
