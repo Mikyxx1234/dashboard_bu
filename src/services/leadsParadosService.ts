@@ -1,5 +1,4 @@
-const KOMMO_TOKEN =
-  'eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6Ijg1MmFlMWE2ZmUzNzk3OWY1NDk1YWRlNmQ1Y2QyODRjNTEwODc3MDI5NmJkMWJhNzMwMjdmNzQ0YTkxN2Y3YWIxMzQxYTkwOTFiNTY1MWRiIn0.eyJhdWQiOiJlMmRhYWM3Mi0yMWUwLTQxYmMtODRjZi04NzUyY2IzZjQwYTUiLCJqdGkiOiI4NTJhZTFhNmZlMzc5NzlmNTQ5NWFkZTZkNWNkMjg0YzUxMDg3NzAyOTZiZDFiYTczMDI3Zjc0NGE5MTdmN2FiMTM0MWE5MDkxYjU2NTFkYiIsImlhdCI6MTc1ODIwNjIwMiwibmJmIjoxNzU4MjA2MjAyLCJleHAiOjE4MzE1MDcyMDAsInN1YiI6IjExNjE2MDY4IiwiZ3JhbnRfdHlwZSI6IiIsImFjY291bnRfaWQiOjMxNjk3MzQ3LCJiYXNlX2RvbWFpbiI6ImtvbW1vLmNvbSIsInZlcnNpb24iOjIsInNjb3BlcyI6WyJjcm0iLCJmaWxlcyIsImZpbGVzX2RlbGV0ZSIsIm5vdGlmaWNhdGlvbnMiLCJwdXNoX25vdGlmaWNhdGlvbnMiXSwidXNlcl9mbGFncyI6MCwiaGFzaF91dWlkIjoiZTdjNjZjZGEtMzcyZC00YjU3LWI4MWQtYTg4MThlMGZiMjM5IiwiYXBpX2RvbWFpbiI6ImFwaS1nLmtvbW1vLmNvbSJ9.SqZZHlGXFpdcE7oD3IOqWexZ_o3maMkJ2E1LWpHz91IJMFEekentANdh6txCxxIs1jhA7ThezdgK9vpTVSHny1SMnRtOx4aL4dxSiar2hVYR9R4cfihvNsGoq3UUfgz3xzHyFuYqBnkMYh-7F8_GN-s0TrUHg1cl3fGPGVpR4d1i3sgUVatDrhQILOpa2e3p-F3EaD1p97ZqzdRI0R-UjB10K9qt6Qbuvk1-5V3-G5bBxJNJMR8hWcvLlK1sKUjFBhkcliZcwmG-gTAil5oaX9px_CtGale9haLWS5AhkjgoZckdhBIeWh5WpHwcx7i1qhuOXkSdo84VdVifbyJazw';
+import { env } from '../config';
 
 const BASE = '/kommo-api';
 
@@ -56,7 +55,7 @@ async function fetchLeadsFromStatus(
     });
 
     const res = await fetch(`${BASE}/api/v4/leads?${params}`, {
-      headers: { Authorization: `Bearer ${KOMMO_TOKEN}` },
+      headers: { Authorization: `Bearer ${env.KOMMO_TOKEN}` },
     });
 
     if (res.status === 204 || !res.ok) break;
@@ -83,7 +82,7 @@ async function fetchUsers(): Promise<Record<number, string>> {
 
   while (true) {
     const res = await fetch(`${BASE}/api/v4/users?page=${page}&limit=250`, {
-      headers: { Authorization: `Bearer ${KOMMO_TOKEN}` },
+      headers: { Authorization: `Bearer ${env.KOMMO_TOKEN}` },
     });
     if (!res.ok) break;
     const data = await res.json();
