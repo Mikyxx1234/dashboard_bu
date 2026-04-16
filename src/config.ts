@@ -2,6 +2,8 @@ interface EnvConfig {
   SUPABASE_URL: string;
   SUPABASE_ANON_KEY: string;
   SUPABASE_SERVICE_KEY: string;
+  KOMMO_TOKEN: string;
+  KOMMO_SUBDOMAIN: string;
 }
 
 declare global {
@@ -16,4 +18,6 @@ export const env: EnvConfig = {
   SUPABASE_URL: runtimeEnv.SUPABASE_URL || import.meta.env.VITE_SUPABASE_URL || '',
   SUPABASE_ANON_KEY: runtimeEnv.SUPABASE_ANON_KEY || import.meta.env.VITE_SUPABASE_ANON_KEY || '',
   SUPABASE_SERVICE_KEY: runtimeEnv.SUPABASE_SERVICE_KEY || import.meta.env.VITE_SUPABASE_SERVICE_KEY || '',
+  KOMMO_TOKEN: runtimeEnv.KOMMO_TOKEN || import.meta.env.VITE_KOMMO_TOKEN || '',
+  KOMMO_SUBDOMAIN: runtimeEnv.KOMMO_SUBDOMAIN || import.meta.env.VITE_KOMMO_SUBDOMAIN || 'academicosoead',
 };
