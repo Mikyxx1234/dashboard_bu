@@ -22,7 +22,9 @@ RUN { \
       echo 'window.__env__ = {'; \
       echo '  SUPABASE_URL: "${VITE_SUPABASE_URL}",'; \
       echo '  SUPABASE_ANON_KEY: "${VITE_SUPABASE_ANON_KEY}",'; \
-      echo '  SUPABASE_SERVICE_KEY: "${VITE_SUPABASE_SERVICE_KEY}"'; \
+      echo '  SUPABASE_SERVICE_KEY: "${VITE_SUPABASE_SERVICE_KEY}",'; \
+      echo '  KOMMO_TOKEN: "${VITE_KOMMO_TOKEN}",'; \
+      echo '  KOMMO_SUBDOMAIN: "${VITE_KOMMO_SUBDOMAIN:-academicosoead}"'; \
       echo '};'; \
       echo 'ENVEOF'; \
       echo 'exec nginx -g "daemon off;"'; \
