@@ -1,18 +1,28 @@
 import express from 'express';
+import cors from 'cors';
 import pg from 'pg';
+import { fileURLToPath } from 'url';
+import path from 'path';
 
 const { Pool } = pg;
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const pool = new Pool({
-  host: '147.93.34.2',
-  port: 5432,
-  user: 'postgres',
-  password: '^&TN5Qkg3BTXpW#eeqHj@E',
-  database: 'postgres',
-  ssl: false,
+  host: process.env.DB_HOST || '168.231.99.126',
+  port: parseInt(process.env.DB_PORT || '3232'),
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || '^&TN5Qkg3BTXpW#eeqHj@E',
+  database: process.env.DB_NAME || 'site_anhanguera',
+  ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  connectionTimeoutMillis: 10000,
+  idleTimeoutMillis: 30000,
 });
 
 const app = express();
+app.use(cors());
+
+const distPath = path.join(__dirname, 'dist');
+app.use(express.static(distPath));
 
 app.get('/api/sessions/list', async (req, res) => {
   try {
@@ -36,9 +46,22 @@ app.get('/api/sessions/list', async (req, res) => {
     res.json(result.rows);
   } catch (err) {
     console.error('Erro ao buscar sessões:', err);
-    res.status(500).json({ error: 'Falha ao buscar sessões' });
+    res.status(500).json({ error: 'Falha ao buscar sessões', details: err.message });
   }
 });
 
-const PORT = 3001;
+app.get('/api/sessions/health', async (_req, res) => {
+  try {
+    await pool.query('SELECT 1');
+    res.json({ status: 'ok', database: 'connected' });
+  } catch (err) {
+    res.status(500).json({ status: 'error', details: err.message });
+  }
+});
+
+app.get('*', (_req, res) => {
+  res.sendFile(path.join(distPath, 'index.html'));
+});
+
+const PORT = process.env.PORT || 3001;
 app.listen(PORT, () => console.log(`API sessions rodando na porta ${PORT}`));
