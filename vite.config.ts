@@ -13,6 +13,11 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
       },
+      '/kommo-api': {
+        target: 'https://academicosoead.kommo.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/kommo-api/, ''),
+      },
     },
   },
 });
