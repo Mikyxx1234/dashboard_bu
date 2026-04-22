@@ -1,14 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
-  ArrowLeft, Save, Eye, Loader2, Image, Tag, Clock, User, BookOpen, Calendar,
+  ArrowLeft, Save, Eye, Loader2, Image, Tag, Clock, User, BookOpen, Calendar, ImageOff,
   Bold, Italic, Heading2, Heading3, List, ListOrdered, Link2, Quote, Code, Minus,
 } from 'lucide-react';
-import { marked } from 'marked';
 import {
   createPost, updatePost, fetchPostBySlug,
   type BlogPost, type BlogPostInsert,
 } from '../services/blogService';
+import { renderBlogMarkdown, normalizeMarkdown, BLOG_CONTENT_CLASS, installBrokenImageFallback } from '../lib/markdown';
 
 const CATEGORIES = ['Administração', 'Concursos', 'Direito', 'Gestão', 'Tecnologia', 'Educação', 'Geral'];
 
@@ -67,10 +67,6 @@ function getDefaultScheduleTime() {
   const d = new Date();
   d.setMinutes(d.getMinutes() + 30);
   return d.toTimeString().slice(0, 5);
-}
-
-function renderMarkdown(md: string): string {
-  return marked.parse(md, { async: false }) as string;
 }
 
 interface MarkdownEditorProps {
@@ -165,6 +161,11 @@ export default function BlogCreatePage() {
   const [loadingPost, setLoadingPost] = useState(false);
   const [error, setError] = useState('');
   const [showPreview, setShowPreview] = useState(false);
+  const [coverFailed, setCoverFailed] = useState(false);
+  const [sidebarCoverFailed, setSidebarCoverFailed] = useState(false);
+  const [avatarFailed, setAvatarFailed] = useState(false);
+  const [sidebarAvatarFailed, setSidebarAvatarFailed] = useState(false);
+  const previewContentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!slug) return;
@@ -195,6 +196,20 @@ export default function BlogCreatePage() {
       .catch((e) => setError(e.message))
       .finally(() => setLoadingPost(false));
   }, [slug]);
+
+  useEffect(() => {
+    setCoverFailed(false);
+    setSidebarCoverFailed(false);
+  }, [form.cover_image]);
+
+  useEffect(() => {
+    setAvatarFailed(false);
+    setSidebarAvatarFailed(false);
+  }, [form.author_avatar]);
+
+  useEffect(() => {
+    if (showPreview) installBrokenImageFallback(previewContentRef.current);
+  }, [showPreview, form.content]);
 
   const handleChange = (field: keyof FormData, value: string | number) => {
     setForm((prev) => {
@@ -231,7 +246,7 @@ export default function BlogCreatePage() {
       title: form.title.trim(),
       slug: form.slug.trim(),
       excerpt: form.excerpt.trim(),
-      content: form.content.trim(),
+      content: normalizeMarkdown(form.content),
       cover_image: form.cover_image.trim(),
       author_name: form.author_name.trim() || 'Equipe Editorial',
       author_avatar: form.author_avatar.trim(),
@@ -329,8 +344,13 @@ export default function BlogCreatePage() {
                 <p className="text-gray-400 text-lg leading-relaxed mb-6">{form.excerpt || 'Resumo do artigo...'}</p>
                 <div className="flex flex-wrap items-center gap-4 text-sm">
                   <div className="flex items-center gap-2">
-                    {form.author_avatar ? (
-                      <img src={form.author_avatar} alt="" className="w-10 h-10 rounded-full object-cover ring-2 ring-white/20" />
+                    {form.author_avatar && !avatarFailed ? (
+                      <img
+                        src={form.author_avatar}
+                        alt=""
+                        className="w-10 h-10 rounded-full object-cover ring-2 ring-white/20"
+                        onError={() => setAvatarFailed(true)}
+                      />
                     ) : (
                       <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center">
                         <User className="h-5 w-5 text-slate-400" />
@@ -352,14 +372,26 @@ export default function BlogCreatePage() {
             <div className="h-0.5 bg-gradient-to-r from-transparent via-orange-600 to-transparent" />
 
             {/* Imagem de capa — sem cortar */}
-            {form.cover_image && (
+            {form.cover_image && !coverFailed && (
               <div className="bg-gray-50">
                 <div className="max-w-5xl mx-auto px-8">
                   <img
                     src={form.cover_image}
                     alt="Capa"
                     className="w-full object-contain max-h-[500px] shadow-lg"
+                    onError={() => setCoverFailed(true)}
                   />
+                </div>
+              </div>
+            )}
+            {form.cover_image && coverFailed && (
+              <div className="bg-gray-50">
+                <div className="max-w-5xl mx-auto px-8">
+                  <div className="flex flex-col items-center justify-center gap-2 bg-white border-2 border-dashed border-gray-200 py-16 text-gray-400">
+                    <ImageOff className="h-10 w-10" />
+                    <span className="text-sm">Imagem de capa não disponível (URL retornou erro)</span>
+                    <span className="text-xs text-gray-400 break-all max-w-xl text-center px-4">{form.cover_image}</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -369,8 +401,9 @@ export default function BlogCreatePage() {
               <div className="flex gap-10">
                 <div className="flex-1 bg-white shadow-sm border border-gray-100 p-8">
                   <div
-                    className="prose prose-lg max-w-none prose-headings:text-gray-900 prose-headings:font-bold prose-p:text-gray-600 prose-p:leading-relaxed prose-a:text-orange-600"
-                    dangerouslySetInnerHTML={{ __html: form.content ? renderMarkdown(form.content) : '<p style="color:#999">Conteúdo do artigo aparecerá aqui...</p>' }}
+                    ref={previewContentRef}
+                    className={BLOG_CONTENT_CLASS}
+                    dangerouslySetInnerHTML={{ __html: form.content ? renderBlogMarkdown(form.content) : '<p style="color:#999">Conteúdo do artigo aparecerá aqui...</p>' }}
                   />
                   {form.tags && (
                     <div className="mt-8 pt-6 border-t border-gray-100">
@@ -391,8 +424,13 @@ export default function BlogCreatePage() {
                       <div className="w-1 h-4 rounded-full bg-orange-600" />
                       <h3 className="text-xs font-bold text-gray-800 uppercase tracking-wider">Sobre o Autor</h3>
                     </div>
-                    {form.author_avatar && (
-                      <img src={form.author_avatar} alt="" className="w-16 h-16 rounded-full object-cover mx-auto mb-3 ring-4 ring-gray-100" />
+                    {form.author_avatar && !sidebarAvatarFailed && (
+                      <img
+                        src={form.author_avatar}
+                        alt=""
+                        className="w-16 h-16 rounded-full object-cover mx-auto mb-3 ring-4 ring-gray-100"
+                        onError={() => setSidebarAvatarFailed(true)}
+                      />
                     )}
                     <p className="font-bold text-gray-900 text-sm">{form.author_name || 'Autor'}</p>
                   </div>
@@ -590,8 +628,19 @@ export default function BlogCreatePage() {
                     placeholder="https://..."
                     className="w-full px-4 py-3 border border-white/[0.1] bg-white/5 rounded-lg text-sm text-white placeholder-slate-500 focus:ring-2 focus:ring-orange-500 focus:border-transparent"
                   />
-                  {form.cover_image && (
-                    <img src={form.cover_image} alt="Preview" className="mt-2 w-full rounded-lg object-contain max-h-40 bg-black/20" />
+                  {form.cover_image && !sidebarCoverFailed && (
+                    <img
+                      src={form.cover_image}
+                      alt="Preview"
+                      className="mt-2 w-full rounded-lg object-contain max-h-40 bg-black/20"
+                      onError={() => setSidebarCoverFailed(true)}
+                    />
+                  )}
+                  {form.cover_image && sidebarCoverFailed && (
+                    <div className="mt-2 flex flex-col items-center justify-center gap-1 rounded-lg border-2 border-dashed border-red-500/30 bg-red-500/10 py-6 text-red-300">
+                      <ImageOff className="h-6 w-6" />
+                      <span className="text-xs font-medium">URL não carregou (verifique se a imagem existe)</span>
+                    </div>
                   )}
                 </div>
 
