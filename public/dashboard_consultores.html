@@ -611,6 +611,55 @@
       opacity: 1;
     }
 
+    .meta-reward-group {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      margin-top: 4px;
+      align-items: flex-start;
+    }
+
+    .meta-reward-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      line-height: 1.2;
+    }
+
+    .meta-reward-label {
+      font-size: 0.5rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted-2);
+      background: rgba(255,255,255,0.05);
+      padding: 1px 4px;
+      border-radius: 3px;
+      min-width: 28px;
+      text-align: center;
+    }
+
+    .meta-reward-label.cup {
+      color: #34d399;
+      background: rgba(52,211,153,0.10);
+    }
+
+    .meta-reward-label.scup {
+      color: #fbbf24;
+      background: rgba(251,191,36,0.10);
+    }
+
+    .meta-reward-val {
+      font-size: 0.62rem;
+      font-weight: 600;
+      color: var(--success);
+      opacity: 0.80;
+    }
+
+    .meta-level.highlight .meta-reward-val {
+      opacity: 1;
+    }
+
     .meta-falta {
       display: flex;
       flex-direction: column;
@@ -787,6 +836,48 @@
     .premiacao-detail-value.tier-pending {
       color: var(--muted-2);
       font-size: 0.95rem;
+    }
+
+    .premiacao-breakdown {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 5px;
+      padding: 12px 20px;
+      border-left: 1px solid rgba(255,255,255,0.06);
+      min-width: 280px;
+    }
+
+    .premiacao-breakdown-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.72rem;
+    }
+
+    .premiacao-breakdown-label {
+      font-size: 0.55rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--muted-2);
+      background: rgba(255,255,255,0.06);
+      padding: 2px 5px;
+      border-radius: 4px;
+      min-width: 32px;
+      text-align: center;
+    }
+
+    .premiacao-breakdown-label.cup  { color: #34d399; background: rgba(52,211,153,0.10); }
+    .premiacao-breakdown-label.scup { color: #fbbf24; background: rgba(251,191,36,0.10); }
+
+    .premiacao-breakdown-leads { font-weight: 700; color: var(--text); min-width: 22px; text-align: right; }
+    .premiacao-breakdown-sep   { color: var(--muted-2); }
+    .premiacao-breakdown-rate  { color: var(--muted); min-width: 52px; }
+    .premiacao-breakdown-value { font-weight: 700; color: var(--success); margin-left: auto; }
+
+    @media (max-width: 700px) {
+      .premiacao-breakdown { min-width: unset; width: 100%; }
     }
 
     @media (max-width: 700px) {
@@ -1145,22 +1236,38 @@
           <div class="meta-level">
             <span class="meta-level-label">Abaixo</span>
             <span class="meta-level-value" id="metaAbaixoValue">—</span>
-            <span class="meta-level-reward" id="metaGanhoAbaixoValue"></span>
+            <div class="meta-reward-group">
+              <div class="meta-reward-row"><span class="meta-reward-label">ANH</span><span class="meta-reward-val" id="metaGanhoAbaixoANH"></span></div>
+              <div class="meta-reward-row"><span class="meta-reward-label cup">Cup</span><span class="meta-reward-val" id="metaGanhoAbaixoCup"></span></div>
+              <div class="meta-reward-row"><span class="meta-reward-label scup">S/Cup</span><span class="meta-reward-val" id="metaGanhoAbaixoSCup"></span></div>
+            </div>
           </div>
           <div class="meta-level">
             <span class="meta-level-label">Inter</span>
             <span class="meta-level-value" id="metaInterValue">70</span>
-            <span class="meta-level-reward" id="metaGanhoInterValue"></span>
+            <div class="meta-reward-group">
+              <div class="meta-reward-row"><span class="meta-reward-label">ANH</span><span class="meta-reward-val" id="metaGanhoInterANH"></span></div>
+              <div class="meta-reward-row"><span class="meta-reward-label cup">Cup</span><span class="meta-reward-val" id="metaGanhoInterCup"></span></div>
+              <div class="meta-reward-row"><span class="meta-reward-label scup">S/Cup</span><span class="meta-reward-val" id="metaGanhoInterSCup"></span></div>
+            </div>
           </div>
           <div class="meta-level highlight">
             <span class="meta-level-label">Meta</span>
             <span class="meta-level-value" id="metaMetaValue">80</span>
-            <span class="meta-level-reward" id="metaGanhoMetaValue"></span>
+            <div class="meta-reward-group">
+              <div class="meta-reward-row"><span class="meta-reward-label">ANH</span><span class="meta-reward-val" id="metaGanhoMetaANH"></span></div>
+              <div class="meta-reward-row"><span class="meta-reward-label cup">Cup</span><span class="meta-reward-val" id="metaGanhoMetaCup"></span></div>
+              <div class="meta-reward-row"><span class="meta-reward-label scup">S/Cup</span><span class="meta-reward-val" id="metaGanhoMetaSCup"></span></div>
+            </div>
           </div>
           <div class="meta-level">
             <span class="meta-level-label">Super</span>
             <span class="meta-level-value" id="metaSuperValue">96</span>
-            <span class="meta-level-reward" id="metaGanhoSuperValue"></span>
+            <div class="meta-reward-group">
+              <div class="meta-reward-row"><span class="meta-reward-label">ANH</span><span class="meta-reward-val" id="metaGanhoSuperANH"></span></div>
+              <div class="meta-reward-row"><span class="meta-reward-label cup">Cup</span><span class="meta-reward-val" id="metaGanhoSuperCup"></span></div>
+              <div class="meta-reward-row"><span class="meta-reward-label scup">S/Cup</span><span class="meta-reward-val" id="metaGanhoSuperSCup"></span></div>
+            </div>
           </div>
         </div>
         <div class="meta-falta" id="metaRealizadosContainer">
@@ -1190,16 +1297,34 @@
           <span class="premiacao-detail-value" id="premiacaoCategoria">—</span>
         </div>
         <div class="premiacao-detail">
-          <span class="premiacao-detail-label">Valor / Lead</span>
-          <span class="premiacao-detail-value" id="premiacaoValorLead">—</span>
-        </div>
-        <div class="premiacao-detail">
-          <span class="premiacao-detail-label">Leads</span>
+          <span class="premiacao-detail-label">Total Leads</span>
           <span class="premiacao-detail-value" id="premiacaoLeads">—</span>
         </div>
-        <div class="premiacao-detail">
-          <span class="premiacao-detail-label">Cálculo</span>
-          <span class="premiacao-detail-value" id="premiacaoCalculo" style="font-size:0.82rem;color:var(--muted)">—</span>
+        <div class="premiacao-breakdown">
+          <div class="premiacao-breakdown-row">
+            <span class="premiacao-breakdown-label">ANH</span>
+            <span class="premiacao-breakdown-leads" id="premiacaoLeadsANH">—</span>
+            <span class="premiacao-breakdown-sep">×</span>
+            <span class="premiacao-breakdown-rate" id="premiacaoRateANH">—</span>
+            <span class="premiacao-breakdown-sep">=</span>
+            <span class="premiacao-breakdown-value" id="premiacaoValorANH">—</span>
+          </div>
+          <div class="premiacao-breakdown-row">
+            <span class="premiacao-breakdown-label cup">Cup</span>
+            <span class="premiacao-breakdown-leads" id="premiacaoLeadsCup">—</span>
+            <span class="premiacao-breakdown-sep">×</span>
+            <span class="premiacao-breakdown-rate" id="premiacaoRateCup">—</span>
+            <span class="premiacao-breakdown-sep">=</span>
+            <span class="premiacao-breakdown-value" id="premiacaoValorCup">—</span>
+          </div>
+          <div class="premiacao-breakdown-row">
+            <span class="premiacao-breakdown-label scup">S/Cup</span>
+            <span class="premiacao-breakdown-leads" id="premiacaoLeadsSCup">—</span>
+            <span class="premiacao-breakdown-sep">×</span>
+            <span class="premiacao-breakdown-rate" id="premiacaoRateSCup">—</span>
+            <span class="premiacao-breakdown-sep">=</span>
+            <span class="premiacao-breakdown-value" id="premiacaoValorSCup">—</span>
+          </div>
         </div>
       </div>
     </section>
@@ -1338,6 +1463,16 @@
     let GANHO_INTER = 0;
     let GANHO_META = 0;
     let GANHO_SUPER = 0;
+    // Cupom (Sumaré - nossos polos)
+    let GANHO_ABAIXO_CUP = 0;
+    let GANHO_INTER_CUP = 0;
+    let GANHO_META_CUP = 0;
+    let GANHO_SUPER_CUP = 0;
+    // Sem Cupom (Sumaré - outro polo)
+    let GANHO_ABAIXO_SCUP = 0;
+    let GANHO_INTER_SCUP = 0;
+    let GANHO_META_SCUP = 0;
+    let GANHO_SUPER_SCUP = 0;
 
     const AUTH_TABLE = 'Senhas Dash';
     const MAX_LOGIN_ATTEMPTS = 5;
@@ -1379,7 +1514,8 @@
       normalized: [],
       selectedConsultant: '',
       authenticatedConsultant: '',
-      isAdmin: false
+      isAdmin: false,
+      atendidosPorConsultor: {}   // { "Consultor|Bandeira": N } da vw_primeira_atribuicao
     };
 
     const els = {
@@ -1594,6 +1730,16 @@
           GANHO_INTER = Number(row['Ganho Inter']) || 0;
           GANHO_META = Number(row['Ganho Meta']) || 0;
           GANHO_SUPER = Number(row['Ganho Super']) || 0;
+          // Cupom
+          GANHO_ABAIXO_CUP = Number(row['Ganho Abaixo Cup']) || 0;
+          GANHO_INTER_CUP  = Number(row['Ganho Inter Cup'])  || 0;
+          GANHO_META_CUP   = Number(row['Ganho Meta Cup'])   || 0;
+          GANHO_SUPER_CUP  = Number(row['Ganho Super Cup'])  || 0;
+          // Sem Cupom
+          GANHO_ABAIXO_SCUP = Number(row['Ganho Abaixo SCup']) || 0;
+          GANHO_INTER_SCUP  = Number(row['Ganho Inter SCup'])  || 0;
+          GANHO_META_SCUP   = Number(row['Ganho Meta SCup'])   || 0;
+          GANHO_SUPER_SCUP  = Number(row['Ganho Super SCup'])  || 0;
           updateMetaPeriodLabel();
           updateMetaBalloon();
           updateGanhoLabels();
@@ -1624,69 +1770,169 @@
     }
 
     function updateGanhoLabels() {
-      var gAbaixoEl = document.getElementById('metaGanhoAbaixoValue');
-      var gInterEl = document.getElementById('metaGanhoInterValue');
-      var gMetaEl = document.getElementById('metaGanhoMetaValue');
-      var gSuperEl = document.getElementById('metaGanhoSuperValue');
       var vAbaixoEl = document.getElementById('metaAbaixoValue');
       if (vAbaixoEl) vAbaixoEl.textContent = formatNumber(META_ABAIXO);
-      if (gAbaixoEl) gAbaixoEl.textContent = GANHO_ABAIXO ? formatCurrency(GANHO_ABAIXO) : '';
-      if (gInterEl) gInterEl.textContent = GANHO_INTER ? formatCurrency(GANHO_INTER) : '';
-      if (gMetaEl) gMetaEl.textContent = GANHO_META ? formatCurrency(GANHO_META) : '';
-      if (gSuperEl) gSuperEl.textContent = GANHO_SUPER ? formatCurrency(GANHO_SUPER) : '';
+
+      var setVal = function(id, val) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = val ? formatCurrency(val) : '—';
+      };
+
+      // Anhanguera
+      setVal('metaGanhoAbaixoANH', GANHO_ABAIXO);
+      setVal('metaGanhoInterANH',  GANHO_INTER);
+      setVal('metaGanhoMetaANH',   GANHO_META);
+      setVal('metaGanhoSuperANH',  GANHO_SUPER);
+      // Cupom
+      setVal('metaGanhoAbaixoCup', GANHO_ABAIXO_CUP);
+      setVal('metaGanhoInterCup',  GANHO_INTER_CUP);
+      setVal('metaGanhoMetaCup',   GANHO_META_CUP);
+      setVal('metaGanhoSuperCup',  GANHO_SUPER_CUP);
+      // Sem Cupom
+      setVal('metaGanhoAbaixoSCup', GANHO_ABAIXO_SCUP);
+      setVal('metaGanhoInterSCup',  GANHO_INTER_SCUP);
+      setVal('metaGanhoMetaSCup',   GANHO_META_SCUP);
+      setVal('metaGanhoSuperSCup',  GANHO_SUPER_SCUP);
     }
 
-    function updatePremiacao(leads) {
-      var card = document.getElementById('premiacaoCard');
+    // ── Supabase helper ─────────────────────────────────────────────────────
+    async function supaFetch(path) {
+      var headers = {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
+        'Accept': 'application/json'
+      };
+      try {
+        var resp = await fetch(SUPABASE_URL + '/rest/v1/' + path, { headers: headers });
+        if (!resp.ok) return [];
+        return resp.json();
+      } catch (e) {
+        console.warn('supaFetch erro:', e);
+        return [];
+      }
+    }
+
+    // ── Busca atendidos únicos (primeira distribuição) da view no Supabase ──────
+    async function fetchAtendidosFromSupabase(from, to) {
+      if (!SUPABASE_URL || !SUPABASE_SERVICE_KEY) return {};
+      try {
+        var qs = 'select=consultor,bandeira,primeira_atribuicao';
+        if (from) qs += '&primeira_atribuicao=gte.' + from + 'T00:00:00';
+        if (to)   qs += '&primeira_atribuicao=lte.' + to   + 'T23:59:59';
+        qs += '&limit=10000';
+        var rows = await supaFetch('vw_primeira_atribuicao?' + qs);
+        if (!Array.isArray(rows)) return {};
+        var mapa = {};
+        rows.forEach(function(r) {
+          var chave = (r.consultor || '') + '|' + (r.bandeira || '');
+          mapa[chave] = (mapa[chave] || 0) + 1;
+        });
+        return mapa;
+      } catch (e) {
+        console.warn('fetchAtendidosFromSupabase erro:', e);
+        return {};
+      }
+    }
+
+    // Polos reconhecidos como "nosso polo" (Cupom) — comparação sem acento e case-insensitive
+    var POLOS_CUPOM = ['barra funda', 'santo amaro', 'santana', 'tatuape', 'sao miguel'];
+
+    function normalizePolo(polo) {
+      if (!polo) return '';
+      return polo.toLowerCase()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // remove acentos
+        .trim();
+    }
+
+    function isCupomPolo(polo) {
+      return POLOS_CUPOM.indexOf(normalizePolo(polo)) !== -1;
+    }
+
+    // Retorna { cupom: N, semCupom: M, total: T } de leads Sumaré do período
+    // Critério: Polo em { Barra Funda, Santo Amaro, Santana, Tatuapé, São Miguel } → Cupom; demais → Sem Cupom
+    async function fetchSumCupomSplit(consultor, from, to) {
+      if (!consultor || !SUPABASE_URL || !SUPABASE_SERVICE_KEY) return { cupom: 0, semCupom: 0, total: 0 };
+
+      var qs = 'consultor=eq.' + encodeURIComponent(consultor) + '&select=id_lead,Polo';
+      if (from) qs += '&created_at=gte.' + from + 'T00:00:00';
+      if (to)   qs += '&created_at=lte.' + to   + 'T23:59:59';
+
+      var sumLeads = await supaFetch('sum_leads_ganhos?' + qs + '&limit=2000');
+      var total = sumLeads.length;
+      if (!total) return { cupom: 0, semCupom: 0, total: 0 };
+
+      var cupomCount = sumLeads.filter(function(r) { return isCupomPolo(r.Polo); }).length;
+
+      return { cupom: cupomCount, semCupom: total - cupomCount, total: total };
+    }
+
+    // ── Cálculo de premiação por categoria ──────────────────────────────────
+    function updatePremiacao(ganhosANH, ganhosCupom, ganhosSemCupom) {
+      var card   = document.getElementById('premiacaoCard');
       var totalEl = document.getElementById('premiacaoTotal');
-      var catEl = document.getElementById('premiacaoCategoria');
-      var valorLeadEl = document.getElementById('premiacaoValorLead');
+      var catEl   = document.getElementById('premiacaoCategoria');
       var leadsEl = document.getElementById('premiacaoLeads');
-      var calculoEl = document.getElementById('premiacaoCalculo');
       if (!card) return;
 
-      if (leads == null || (state.isAdmin && !state.selectedConsultant)) {
+      var totalLeads = (ganhosANH || 0) + (ganhosCupom || 0) + (ganhosSemCupom || 0);
+
+      if (ganhosANH == null || (state.isAdmin && !state.selectedConsultant)) {
         card.classList.add('hidden');
         return;
       }
 
-      var categoria = '';
-      var valorPorLead = 0;
+      // Determinar tier pelo total de leads
+      var tier = '';
+      if      (totalLeads >= META_SUPER && META_SUPER > 0)               tier = 'Super';
+      else if (totalLeads >= META_LEADS && META_LEADS > 0)               tier = 'Meta';
+      else if (totalLeads >= META_INTER && META_INTER > 0)               tier = 'Inter';
+      else if (totalLeads > 0 && (META_INTER === 0 || totalLeads < META_INTER)) tier = 'Abaixo';
 
-      if (leads >= META_SUPER && GANHO_SUPER > 0) {
-        categoria = 'Super';
-        valorPorLead = GANHO_SUPER;
-      } else if (leads >= META_LEADS && GANHO_META > 0) {
-        categoria = 'Meta';
-        valorPorLead = GANHO_META;
-      } else if (leads >= META_INTER && GANHO_INTER > 0) {
-        categoria = 'Inter';
-        valorPorLead = GANHO_INTER;
-      } else if (META_INTER > 0 && leads > 0 && leads < META_INTER && GANHO_ABAIXO > 0) {
-        categoria = 'Abaixo';
-        valorPorLead = GANHO_ABAIXO;
-      }
+      // Valores por categoria para o tier
+      var rateANH = 0, rateCup = 0, rateSCup = 0;
+      if (tier === 'Super')  { rateANH = GANHO_SUPER;  rateCup = GANHO_SUPER_CUP;  rateSCup = GANHO_SUPER_SCUP;  }
+      else if (tier === 'Meta')   { rateANH = GANHO_META;   rateCup = GANHO_META_CUP;   rateSCup = GANHO_META_SCUP;   }
+      else if (tier === 'Inter')  { rateANH = GANHO_INTER;  rateCup = GANHO_INTER_CUP;  rateSCup = GANHO_INTER_SCUP;  }
+      else if (tier === 'Abaixo') { rateANH = GANHO_ABAIXO; rateCup = GANHO_ABAIXO_CUP; rateSCup = GANHO_ABAIXO_SCUP; }
 
-      if (!categoria || valorPorLead === 0) {
-        card.classList.remove('hidden');
-        if (totalEl) totalEl.textContent = 'R$ 0,00';
-        if (catEl) { catEl.textContent = leads === 0 ? 'Sem leads' : '—'; catEl.className = 'premiacao-detail-value tier-pending'; }
-        if (valorLeadEl) valorLeadEl.textContent = '—';
-        if (leadsEl) leadsEl.textContent = formatNumber(leads);
-        if (calculoEl) calculoEl.textContent = leads === 0 ? 'Registre leads para gerar premiação' : '—';
-        return;
-      }
+      // Prêmios individuais
+      var premioANH  = (ganhosANH    || 0) * rateANH;
+      var premioCup  = (ganhosCupom  || 0) * rateCup;
+      var premioSCup = (ganhosSemCupom || 0) * rateSCup;
+      var totalPremio = premioANH + premioCup + premioSCup;
 
-      var totalPremiacao = leads * valorPorLead;
       card.classList.remove('hidden');
-      if (totalEl) totalEl.textContent = formatCurrency(totalPremiacao);
-      if (catEl) { catEl.textContent = categoria; catEl.className = 'premiacao-detail-value tier-active'; }
-      if (valorLeadEl) valorLeadEl.textContent = formatCurrency(valorPorLead);
-      if (leadsEl) leadsEl.textContent = formatNumber(leads);
-      if (calculoEl) calculoEl.textContent = formatNumber(leads) + ' × ' + formatCurrency(valorPorLead);
+
+      if (totalEl) totalEl.textContent = formatCurrency(totalPremio);
+      if (leadsEl) leadsEl.textContent = formatNumber(totalLeads);
+      if (catEl) {
+        if (!tier) {
+          catEl.textContent = totalLeads === 0 ? 'Sem leads' : '—';
+          catEl.className = 'premiacao-detail-value tier-pending';
+        } else {
+          catEl.textContent = tier;
+          catEl.className = 'premiacao-detail-value tier-active';
+        }
+      }
+
+      // Helper para setar elemento
+      var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
+
+      // Breakdown ANH
+      set('premiacaoLeadsANH', formatNumber(ganhosANH || 0));
+      set('premiacaoRateANH',  rateANH  ? formatCurrency(rateANH)  : '—');
+      set('premiacaoValorANH', premioANH ? formatCurrency(premioANH) : 'R$ 0,00');
+      // Breakdown Cupom
+      set('premiacaoLeadsCup', formatNumber(ganhosCupom || 0));
+      set('premiacaoRateCup',  rateCup  ? formatCurrency(rateCup)  : '—');
+      set('premiacaoValorCup', premioCup ? formatCurrency(premioCup) : 'R$ 0,00');
+      // Breakdown Sem Cupom
+      set('premiacaoLeadsSCup', formatNumber(ganhosSemCupom || 0));
+      set('premiacaoRateSCup',  rateSCup  ? formatCurrency(rateSCup)  : '—');
+      set('premiacaoValorSCup', premioSCup ? formatCurrency(premioSCup) : 'R$ 0,00');
     }
 
-    function updateMetaBalloon() {
+    async function updateMetaBalloon() {
       if (!els.metaFaltaValue) return;
 
       var abaixoEl = document.getElementById('metaAbaixoValue');
@@ -1704,17 +1950,28 @@
         els.metaFaltaValue.classList.remove('achieved');
         var labelEl = els.metaFaltaContainer ? els.metaFaltaContainer.querySelector('.meta-falta-label') : null;
         if (labelEl) labelEl.textContent = 'Falta para a meta';
-        updatePremiacao(null);
+        updatePremiacao(null, 0, 0);
         return;
       }
 
       var itemsForScope = getFilteredItems();
-      var ganhosCurrent = itemsForScope
-        .filter(function(item) { return item.bandeira === 'Anhanguera' || item.bandeira === 'Sumaré'; })
+
+      // Ganhos Anhanguera (já disponíveis no webhook)
+      var ganhosANH = itemsForScope
+        .filter(function(item) { return item.bandeira === 'Anhanguera'; })
         .reduce(function(sum, item) { return sum + Number(item.ganhos || 0); }, 0);
 
+      // Ganhos Sumaré: buscar split Cupom/Sem Cupom no Supabase
+      var consultor = state.isAdmin ? state.selectedConsultant : state.authenticatedConsultant;
+      var from = els.fromDate ? els.fromDate.value : '';
+      var to   = els.toDate   ? els.toDate.value   : '';
+      var sumSplit = await fetchSumCupomSplit(consultor, from, to);
+
+      // Total para exibir "realizados"
+      var ganhosCurrent = ganhosANH + sumSplit.total;
       if (els.metaRealizadosValue) els.metaRealizadosValue.textContent = formatNumber(ganhosCurrent);
-      updatePremiacao(ganhosCurrent);
+
+      updatePremiacao(ganhosANH, sumSplit.cupom, sumSplit.semCupom);
 
       var faltam = Math.max(0, META_LEADS - ganhosCurrent);
       var labelEl2 = els.metaFaltaContainer ? els.metaFaltaContainer.querySelector('.meta-falta-label') : null;
@@ -1777,18 +2034,28 @@
           const list = grouped[flag];
           const totalGanhos = list.reduce(function(sum, item) { return sum + item.ganhos; }, 0);
           const totalPerdidos = list.reduce(function(sum, item) { return sum + item.perdidos; }, 0);
-          const totalAtendidos = totalGanhos + totalPerdidos;
           const conv = calcConversion(totalGanhos, totalPerdidos);
           const sectionClass = flag === 'Anhanguera' ? 'faculty-anhanguera' : 'faculty-sumare';
           const colorVar = flag === 'Anhanguera' ? 'var(--anhanguera)' : 'var(--sumare)';
 
+          // Soma atendidos únicos da view (primeira distribuição) para todos consultores desta bandeira
+          const mapa = state.atendidosPorConsultor || {};
+          const totalAtendidos = list.reduce(function(sum, item) {
+            var chave = item.nome + '|' + flag;
+            return sum + (mapa[chave] || 0);
+          }, 0);
+          // Fallback: se a view não retornou dados usa ganhos + perdidos
+          const totalAtendidosExibido = totalAtendidos > 0 ? totalAtendidos : (totalGanhos + totalPerdidos);
+
           const cards = list.map(function(item) {
+            var chaveCard = item.nome + '|' + flag;
+            var atendidosCard = mapa[chaveCard] || item.total_atendido;
             return '<div class="consultant-card">'
               + '<div class="consultant-top">'
               + '<div><div class="consultant-name">' + escapeHtml(item.nome) + '</div><div class="consultant-flag">' + escapeHtml(item.bandeira) + '</div></div>'
               + '<div class="badge-conv">' + formatPercent(item.conversao) + '</div>'
               + '</div>'
-              + '<div class="meta">Ganhos: ' + formatNumber(item.ganhos) + ' • Perdidos: ' + formatNumber(item.perdidos) + ' • Atendidos: ' + formatNumber(item.total_atendido) + '</div>'
+              + '<div class="meta">Ganhos: ' + formatNumber(item.ganhos) + ' • Perdidos: ' + formatNumber(item.perdidos) + ' • Atendidos: ' + formatNumber(atendidosCard) + '</div>'
               + '</div>';
           }).join('');
 
@@ -1799,7 +2066,7 @@
             + '<div><div class="faculty-name">' + escapeHtml(flag) + '</div><div class="panel-subtitle">Resumo por bandeira</div></div>'
             + '</div>'
             + '<div class="faculty-stats">'
-            + '<div class="faculty-stat">Atendidos: <strong>' + formatNumber(totalAtendidos) + '</strong></div>'
+            + '<div class="faculty-stat">Atendidos: <strong>' + formatNumber(totalAtendidosExibido) + '</strong></div>'
             + '<div class="faculty-stat">Ganhos: <strong>' + formatNumber(totalGanhos) + '</strong></div>'
             + '<div class="faculty-stat">Conversão: <strong>' + formatPercent(conv) + '</strong></div>'
             + '</div>'
@@ -1949,10 +2216,14 @@
       }
 
       try {
-        const payload = await requestWebhook(WEBHOOK_URL, requestBody);
+        const [payload, atendidosMapa] = await Promise.all([
+          requestWebhook(WEBHOOK_URL, requestBody),
+          fetchAtendidosFromSupabase(from, to)
+        ]);
         const rows = extractArray(payload).map(normalizeItem);
 
         state.raw = payload;
+        state.atendidosPorConsultor = atendidosMapa;
         state.normalized = state.isAdmin ? rows : rows.filter(function(item) { return item.nome === state.authenticatedConsultant; });
 
         applyAuthenticatedConsultant();
@@ -2080,6 +2351,7 @@
       clearSession();
       state.raw = [];
       state.normalized = [];
+      state.atendidosPorConsultor = {};
       state.selectedConsultant = '';
       state.authenticatedConsultant = '';
       state.isAdmin = false;

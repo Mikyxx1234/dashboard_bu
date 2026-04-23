@@ -1,9 +1,14 @@
-import { useState, useCallback, useMemo } from 'react';
-import { Upload, FileSpreadsheet, Search, Download, RotateCcw, CheckCircle, AlertCircle, X, ChevronRight } from 'lucide-react';
+import { useState, useCallback, useMemo, useRef } from 'react';
+import {
+  Upload, FileSpreadsheet, Search, Download, RotateCcw, CheckCircle,
+  AlertCircle, X, ChevronRight, Zap, SlidersHorizontal,
+  Phone, User, BookOpen, MapPin, GitBranch, UserCheck, Hash, ExternalLink,
+} from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { env } from '../config';
 
 // ---------------------------------------------------------------------------
-// Types
+// Types — Formatar
 // ---------------------------------------------------------------------------
 interface BaseInfo {
   nome: string;
@@ -32,6 +37,82 @@ interface SearchResult {
 }
 
 type Step = 'inicio' | 'pesquisar' | 'resultado' | 'tratar' | 'tratar-resultado';
+
+// ---------------------------------------------------------------------------
+// Types — Atualizar Kommo
+// ---------------------------------------------------------------------------
+type AkStep = 'upload' | 'mapeamento' | 'buscando' | 'resultado' | 'campos' | 'atualizando' | 'update-resultado';
+type AkCampoBusca = 'id' | 'telefone' | 'geral';
+
+interface KommoUser { id: number; name: string; }
+interface KommoStatus { id: number; name: string; }
+interface KommoPipelineData { id: number; name: string; statuses: KommoStatus[]; }
+interface KommoFieldEnum { id: number; value: string; }
+interface KommoField {
+  id: number;
+  name: string;
+  field_type?: string; // Kommo v4 usa field_type
+  type?: string;       // algumas respostas usam type
+  enums?: KommoFieldEnum[];
+}
+
+const SELECT_FIELD_TYPES = new Set(['select', 'multiselect', 'radiobutton', 'checkbox']);
+
+/** Detecta se o campo é do tipo seleção — checa enums (sinal mais confiável) OU field_type/type */
+function fieldIsSelect(f: KommoField): boolean {
+  if (f.enums && f.enums.length > 0) return true;
+  const t = (f.field_type ?? f.type ?? '').toLowerCase();
+  return SELECT_FIELD_TYPES.has(t);
+}
+
+interface FieldConfig {
+  key: string;
+  label: string;
+  kind: 'nome' | 'responsavel' | 'status' | 'custom';
+  fieldId?: number;
+  fieldType?: string;
+  enums?: KommoFieldEnum[];          // opções do campo, quando for select
+  enabled: boolean;
+  fonte: 'coluna' | 'fixo' | 'enum';
+  coluna: string;
+  valorFixo: string;
+  valorId: string;    // user_id, "pipelineId:statusId", ou String(enum.id)
+  enumValue: string;  // valor textual do enum selecionado
+}
+
+interface AkUpdateResult {
+  leadId: number;
+  leadNome: string;
+  status: 'ok' | 'erro';
+  erro?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Types — Consultar Lead
+// ---------------------------------------------------------------------------
+type ConsultaMode = 'id' | 'ra' | 'telefone' | 'geral';
+
+interface LeadDetalhe {
+  id: number;
+  nomeLead: string;
+  nomeContato: string;
+  telefone: string;
+  ra: string;
+  polo: string;
+  pipeline: string;
+  statusNome: string;
+  responsavel: string;
+}
+
+interface AkRowResult {
+  idx: number;
+  valorBusca: string;
+  leadId: number | null;
+  leadNome: string;
+  status: 'encontrado' | 'nao_encontrado' | 'erro';
+  erro?: string;
+  selecionado: boolean;
+}
 
 // ---------------------------------------------------------------------------
 // Funções de limpeza (port do Python)
@@ -280,7 +361,243 @@ function baseRowsToWorkbook(rows: BaseRow[]): XLSX.WorkBook {
 }
 
 // ---------------------------------------------------------------------------
-// Componentes auxiliares
+// Kommo API helpers
+// ---------------------------------------------------------------------------
+// Em dev usa o proxy Vite (/kommo-api → academicosoead.kommo.com) para evitar CORS.
+// Em produção usa a URL direta (necessita proxy nginx ou similar configurado).
+function kommoBase(): string {
+  return import.meta.env.DEV
+    ? '/kommo-api/api/v4'
+    : `https://${env.KOMMO_SUBDOMAIN}.kommo.com/api/v4`;
+}
+
+function kommoHeaders() {
+  return {
+    Authorization: `Bearer ${env.KOMMO_TOKEN}`,
+    Accept: 'application/json',
+  };
+}
+
+async function kommoGet(endpoint: string): Promise<unknown> {
+  const res = await fetch(`${kommoBase()}${endpoint}`, { headers: kommoHeaders() });
+  if (res.status === 204) return null;
+  if (!res.ok) throw new Error(`Kommo ${res.status}`);
+  return res.json();
+}
+
+async function kommoFetch(
+  endpoint: string,
+  method: 'PATCH' | 'POST',
+  body: unknown
+): Promise<unknown> {
+  const res = await fetch(`${kommoBase()}${endpoint}`, {
+    method,
+    headers: {
+      Authorization: `Bearer ${env.KOMMO_TOKEN}`,
+      'Content-Type': 'application/json',
+      Accept: 'application/json',
+    },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 204) return null;
+  if (!res.ok) {
+    const text = await res.text().catch(() => '');
+    throw new Error(`Kommo ${method} ${res.status}${text ? ': ' + text.slice(0, 120) : ''}`);
+  }
+  return res.json();
+}
+
+// Busca metadados para o passo "campos"
+async function fetchKommoUsers(): Promise<KommoUser[]> {
+  const d = await kommoGet('/users?limit=250') as { _embedded?: { users?: KommoUser[] } };
+  return d?._embedded?.users ?? [];
+}
+async function fetchKommoPipelines(): Promise<KommoPipelineData[]> {
+  const d = await kommoGet('/leads/pipelines?limit=50') as {
+    _embedded?: { pipelines?: { id: number; name: string; _embedded?: { statuses?: KommoStatus[] } }[] }
+  };
+  return (d?._embedded?.pipelines ?? []).map(p => ({
+    id: p.id, name: p.name, statuses: p._embedded?.statuses ?? [],
+  }));
+}
+async function fetchKommoCustomFields(): Promise<KommoField[]> {
+  // Busca com paginação automática (Kommo limita 50 por página por padrão)
+  const allFields: KommoField[] = [];
+  let page = 1;
+  while (true) {
+    const d = await kommoGet(`/leads/custom_fields?limit=50&page=${page}`) as {
+      _embedded?: { custom_fields?: KommoField[] };
+      _links?: { next?: unknown };
+    };
+    const batch = d?._embedded?.custom_fields ?? [];
+    allFields.push(...batch);
+    // Para quando não há próxima página ou retornou menos de 50
+    if (!d?._links?.next || batch.length < 50) break;
+    page++;
+  }
+  return allFields;
+}
+
+async function buscarLeadPorId(id: string): Promise<{ id: number; name: string } | null> {
+  try {
+    const data = await kommoGet(`/leads/${id.trim()}`) as { id: number; name: string };
+    return data ? { id: data.id, name: data.name || '' } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function buscarLeadPorTelefone(telefone: string): Promise<{ id: number; name: string } | null> {
+  try {
+    const clean = telefone.replace(/\D/g, '');
+    if (!clean) return null;
+    const data = await kommoGet(
+      `/contacts?query=${encodeURIComponent(clean)}&with=leads&limit=5`
+    ) as { _embedded?: { contacts?: { _embedded?: { leads?: { id: number }[] } }[] } };
+    const contacts = data?._embedded?.contacts;
+    if (!contacts?.length) return null;
+    const leads = contacts[0]?._embedded?.leads;
+    if (!leads?.length) return null;
+    const leadId = leads[leads.length - 1].id;
+    const lead = await kommoGet(`/leads/${leadId}`) as { id: number; name: string };
+    return lead ? { id: lead.id, name: lead.name || '' } : null;
+  } catch {
+    return null;
+  }
+}
+
+async function buscarLeadGeral(query: string): Promise<{ id: number; name: string } | null> {
+  try {
+    const data = await kommoGet(
+      `/leads?query=${encodeURIComponent(query)}&limit=1`
+    ) as { _embedded?: { leads?: { id: number; name: string }[] } };
+    const leads = data?._embedded?.leads;
+    if (!leads?.length) return null;
+    return { id: leads[0].id, name: leads[0].name || '' };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Helpers — Consultar Lead (cache de pipelines e usuários)
+// ---------------------------------------------------------------------------
+const _pipelineCache: Record<string, { name: string; statuses: Record<number, string> }> = {};
+const _userCache: Record<number, string> = {};
+
+type KommoLead = {
+  id: number; name: string; pipeline_id: number; status_id: number;
+  responsible_user_id: number;
+  custom_fields_values?: { field_id: number; field_name: string; values: { value: unknown }[] }[];
+  _embedded?: { contacts?: { id: number; name: string }[] };
+};
+type KommoContact = {
+  id: number; name: string;
+  custom_fields_values?: { field_type: string; field_name: string; values: { value: unknown; enum_code?: string }[] }[];
+};
+type KommoPipeline = { id: number; name: string; _embedded?: { statuses?: { id: number; name: string }[] } };
+
+async function kommoFetchPipeline(pipelineId: number, statusId: number): Promise<{ pipeline: string; statusNome: string }> {
+  const key = String(pipelineId);
+  if (!_pipelineCache[key]) {
+    try {
+      const data = await kommoGet(`/leads/pipelines/${pipelineId}`) as KommoPipeline;
+      const statuses: Record<number, string> = {};
+      for (const s of data?._embedded?.statuses ?? []) statuses[s.id] = s.name;
+      _pipelineCache[key] = { name: data?.name ?? `Pipeline ${pipelineId}`, statuses };
+    } catch {
+      _pipelineCache[key] = { name: `Pipeline ${pipelineId}`, statuses: {} };
+    }
+  }
+  const cached = _pipelineCache[key];
+  return { pipeline: cached.name, statusNome: cached.statuses[statusId] ?? `Status ${statusId}` };
+}
+
+async function kommoFetchUser(userId: number): Promise<string> {
+  if (_userCache[userId]) return _userCache[userId];
+  try {
+    const data = await kommoGet(`/users/${userId}`) as { name?: string };
+    _userCache[userId] = data?.name ?? `Usuário ${userId}`;
+  } catch {
+    _userCache[userId] = `Usuário ${userId}`;
+  }
+  return _userCache[userId];
+}
+
+function extractCustomFieldValue(
+  fields: KommoLead['custom_fields_values'],
+  names: string[]
+): string {
+  if (!fields?.length) return '';
+  const lower = names.map(n => n.toLowerCase());
+  for (const f of fields) {
+    const fn = String(f.field_name ?? '').toLowerCase();
+    if (lower.some(n => fn.includes(n))) {
+      return String(f.values?.[0]?.value ?? '');
+    }
+  }
+  return '';
+}
+
+function extractContactPhone(contact: KommoContact): string {
+  for (const f of contact?.custom_fields_values ?? []) {
+    const isPhone =
+      f.field_type === 'multitext' ||
+      String(f.field_name ?? '').toLowerCase().includes('telefone') ||
+      String(f.field_name ?? '').toLowerCase().includes('phone') ||
+      String(f.field_name ?? '').toLowerCase().includes('cel');
+    if (isPhone) {
+      const val = String(f.values?.[0]?.value ?? '').trim();
+      if (val) return val;
+    }
+  }
+  return '';
+}
+
+async function buscarDetalhesLead(leadId: number): Promise<LeadDetalhe | null> {
+  try {
+    const lead = await kommoGet(`/leads/${leadId}?with=contacts`) as KommoLead;
+    if (!lead?.id) return null;
+
+    // Contato principal
+    let nomeContato = '';
+    let telefone = '';
+    const contactStub = lead._embedded?.contacts?.[0];
+    if (contactStub?.id) {
+      try {
+        const c = await kommoGet(`/contacts/${contactStub.id}`) as KommoContact;
+        nomeContato = c?.name ?? contactStub.name ?? '';
+        telefone = extractContactPhone(c);
+      } catch {
+        nomeContato = contactStub.name ?? '';
+      }
+    }
+
+    const cf = lead.custom_fields_values ?? [];
+    const ra   = extractCustomFieldValue(cf, ['ra', 'anh_ra', 'sum_ra', 'matricula', 'matrícula', 'registro']);
+    const polo = extractCustomFieldValue(cf, ['polo', 'anh_polo', 'sum_polo']);
+
+    const { pipeline, statusNome } = await kommoFetchPipeline(lead.pipeline_id, lead.status_id);
+    const responsavel = await kommoFetchUser(lead.responsible_user_id);
+
+    return {
+      id: lead.id,
+      nomeLead: lead.name ?? '',
+      nomeContato,
+      telefone,
+      ra,
+      polo,
+      pipeline,
+      statusNome,
+      responsavel,
+    };
+  } catch {
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Componentes auxiliares compartilhados
 // ---------------------------------------------------------------------------
 function StatCard({ value, label, gradient }: { value: number | string; label: string; gradient?: string }) {
   return (
@@ -341,9 +658,1112 @@ function UploadZone({ onFile, accept, label, sublabel }: {
 }
 
 // ---------------------------------------------------------------------------
+// Aba: Atualizar Kommo
+// ---------------------------------------------------------------------------
+function AtualizarKommoTab() {
+  const [step, setStep] = useState<AkStep>('upload');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [progress, setProgress] = useState({ atual: 0, total: 0 });
+
+  const [akData, setAkData] = useState<Record<string, unknown>[]>([]);
+  const [akColunas, setAkColunas] = useState<string[]>([]);
+  const [akFileName, setAkFileName] = useState('');
+  const [akPreview, setAkPreview] = useState<Record<string, string[]>>({});
+
+  const [campoBusca, setCampoBusca] = useState<AkCampoBusca>('telefone');
+  const [colunaBusca, setColunaBusca] = useState('');
+
+  const [resultados, setResultados] = useState<AkRowResult[]>([]);
+  const abortRef = useRef(false);
+
+  // ── Estado para o passo "campos" ─────────────────────────────────────────
+  const [kommoUsers, setKommoUsers] = useState<KommoUser[]>([]);
+  const [kommoPipelines, setKommoPipelines] = useState<KommoPipelineData[]>([]);
+  const [kommoCustomFields, setKommoCustomFields] = useState<KommoField[]>([]);
+  const [metaLoading, setMetaLoading] = useState(false);
+  const [metaError, setMetaError] = useState('');
+  const [fieldConfigs, setFieldConfigs] = useState<FieldConfig[]>([]);
+  const [updateResults, setUpdateResults] = useState<AkUpdateResult[]>([]);
+  const [cfTab, setCfTab] = useState<'principal' | 'sumare' | 'anhanguera'>('principal');
+
+  const handleUpload = useCallback(async (file: File) => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await readExcelFile(file);
+      const colunas = data.length > 0 ? Object.keys(data[0]) : [];
+      setAkData(data);
+      setAkColunas(colunas);
+      setAkFileName(file.name);
+
+      const preview: Record<string, string[]> = {};
+      for (const col of colunas) {
+        preview[col] = data.slice(0, 3).map(r => String(r[col] ?? '')).filter(Boolean);
+      }
+      setAkPreview(preview);
+
+      const sugId = detectarColuna(colunas, ['id', 'lead_id', 'id lead', 'id kommo', 'id_lead', 'idlead']);
+      const sugTel = detectarColuna(colunas, PATTERNS_TEL);
+      if (sugId) { setCampoBusca('id'); setColunaBusca(sugId); }
+      else if (sugTel) { setCampoBusca('telefone'); setColunaBusca(sugTel); }
+      else { setCampoBusca('geral'); setColunaBusca(colunas[0] || ''); }
+
+      setStep('mapeamento');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro ao ler arquivo');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleIniciarBusca = useCallback(async () => {
+    if (!colunaBusca) { setError('Selecione a coluna de busca.'); return; }
+    if (!env.KOMMO_SUBDOMAIN || !env.KOMMO_TOKEN) {
+      setError('Token/Subdomínio do Kommo não configurado. Defina KOMMO_TOKEN e KOMMO_SUBDOMAIN nas variáveis de ambiente.');
+      return;
+    }
+
+    setLoading(true);
+    setError('');
+    setStep('buscando');
+    setProgress({ atual: 0, total: akData.length });
+    abortRef.current = false;
+
+    const results: AkRowResult[] = [];
+
+    for (let i = 0; i < akData.length; i++) {
+      if (abortRef.current) break;
+
+      const row = akData[i];
+      const valor = String(row[colunaBusca] ?? '').trim();
+      setProgress({ atual: i + 1, total: akData.length });
+
+      if (!valor) {
+        results.push({ idx: i, valorBusca: '—', leadId: null, leadNome: '', status: 'nao_encontrado', selecionado: false });
+        continue;
+      }
+
+      try {
+        let lead: { id: number; name: string } | null = null;
+        if (campoBusca === 'id') lead = await buscarLeadPorId(valor);
+        else if (campoBusca === 'telefone') lead = await buscarLeadPorTelefone(valor);
+        else lead = await buscarLeadGeral(valor);
+
+        if (lead) {
+          results.push({ idx: i, valorBusca: valor, leadId: lead.id, leadNome: lead.name, status: 'encontrado', selecionado: true });
+        } else {
+          results.push({ idx: i, valorBusca: valor, leadId: null, leadNome: '', status: 'nao_encontrado', selecionado: false });
+        }
+      } catch (err: unknown) {
+        results.push({
+          idx: i, valorBusca: valor, leadId: null, leadNome: '',
+          status: 'erro', erro: err instanceof Error ? err.message : 'Erro',
+          selecionado: false,
+        });
+      }
+
+      if (i < akData.length - 1) await new Promise(r => setTimeout(r, 200));
+    }
+
+    setResultados(results);
+    setLoading(false);
+    setStep('resultado');
+  }, [akData, colunaBusca, campoBusca]);
+
+  const toggleSelecionado = useCallback((idx: number) => {
+    setResultados(prev => prev.map(r => r.idx === idx ? { ...r, selecionado: !r.selecionado } : r));
+  }, []);
+
+  const toggleTodos = useCallback((sel: boolean) => {
+    setResultados(prev => prev.map(r => r.status === 'encontrado' ? { ...r, selecionado: sel } : r));
+  }, []);
+
+  const handleReset = useCallback(() => {
+    setStep('upload');
+    setAkData([]); setAkColunas([]); setAkFileName(''); setAkPreview({});
+    setColunaBusca(''); setCampoBusca('telefone');
+    setResultados([]); setError('');
+    setProgress({ atual: 0, total: 0 });
+    setFieldConfigs([]); setKommoUsers([]); setKommoPipelines([]); setKommoCustomFields([]);
+    setUpdateResults([]); setMetaError('');
+  }, []);
+
+  // ── Entrar no passo "campos": busca metadados do Kommo ──────────────────
+  const handleEntrarCampos = useCallback(async () => {
+    setStep('campos');
+    if (kommoUsers.length || kommoCustomFields.length) return; // já carregou
+    setMetaLoading(true);
+    setMetaError('');
+    try {
+      const [users, pipelines, customFields] = await Promise.all([
+        fetchKommoUsers(),
+        fetchKommoPipelines(),
+        fetchKommoCustomFields(),
+      ]);
+      setKommoUsers(users);
+      setKommoPipelines(pipelines);
+      setKommoCustomFields(customFields);
+
+      // Monta configs iniciais
+      const configs: FieldConfig[] = [
+        { key: 'nome', label: 'Nome do Lead', kind: 'nome', enabled: false, fonte: 'coluna', coluna: '', valorFixo: '', valorId: '', enumValue: '' },
+        { key: 'responsavel', label: 'Responsável', kind: 'responsavel', enabled: false, fonte: 'fixo', coluna: '', valorFixo: '', valorId: '', enumValue: '' },
+        { key: 'status', label: 'Fase / Status', kind: 'status', enabled: false, fonte: 'fixo', coluna: '', valorFixo: '', valorId: '', enumValue: '' },
+        ...customFields.map(f => ({
+          key: `cf_${f.id}`,
+          label: f.name,
+          kind: 'custom' as const,
+          fieldId: f.id,
+          fieldType: f.field_type ?? f.type ?? '',
+          enums: f.enums ?? [],
+          enabled: false,
+          fonte: fieldIsSelect(f) ? 'enum' as const : 'coluna' as const,
+          coluna: '',
+          valorFixo: '',
+          valorId: '',
+          enumValue: '',
+        })),
+      ];
+      setFieldConfigs(configs);
+    } catch (err: unknown) {
+      setMetaError(err instanceof Error ? err.message : 'Erro ao carregar metadados do Kommo');
+    } finally {
+      setMetaLoading(false);
+    }
+  }, [kommoUsers.length, kommoCustomFields.length]);
+
+  // ── Aplicar atualizações no Kommo ────────────────────────────────────────
+  const handleAplicarAtualizacoes = useCallback(async () => {
+    const selecionados = resultados.filter(r => r.selecionado && r.leadId);
+    if (!selecionados.length) return;
+
+    const enabledConfigs = fieldConfigs.filter(c => c.enabled);
+    if (!enabledConfigs.length) {
+      setMetaError('Selecione pelo menos um campo para atualizar.');
+      return;
+    }
+
+    setStep('atualizando');
+    setProgress({ atual: 0, total: selecionados.length });
+    abortRef.current = false;
+    const results: AkUpdateResult[] = [];
+
+    for (let i = 0; i < selecionados.length; i++) {
+      if (abortRef.current) break;
+      const r = selecionados[i];
+      const row = akData[r.idx] ?? {};
+      setProgress({ atual: i + 1, total: selecionados.length });
+
+      try {
+        const body: Record<string, unknown> = {};
+        const customFieldsValues: { field_id: number; values: { value: string }[] }[] = [];
+
+        for (const cfg of enabledConfigs) {
+          const textVal = cfg.fonte === 'coluna' ? String(row[cfg.coluna] ?? '').trim() : cfg.valorFixo.trim();
+
+          if (cfg.kind === 'nome') {
+            if (textVal) body.name = textVal;
+          } else if (cfg.kind === 'responsavel') {
+            const uid = parseInt(cfg.valorId, 10);
+            if (!isNaN(uid)) body.responsible_user_id = uid;
+          } else if (cfg.kind === 'status') {
+            const parts = cfg.valorId.split(':');
+            if (parts.length === 2) {
+              body.pipeline_id = parseInt(parts[0], 10);
+              body.status_id   = parseInt(parts[1], 10);
+            }
+          } else if (cfg.kind === 'custom' && cfg.fieldId) {
+            if (cfg.enums && cfg.enums.length > 0) {
+              // Campo select: envia enum_id + value
+              const enumId = parseInt(cfg.valorId, 10);
+              if (!isNaN(enumId) && cfg.enumValue) {
+                customFieldsValues.push({
+                  field_id: cfg.fieldId,
+                  values: [{ value: cfg.enumValue, enum_id: enumId } as { value: string; enum_id?: number }],
+                });
+              }
+            } else {
+              // Campo de texto livre
+              if (textVal) customFieldsValues.push({ field_id: cfg.fieldId, values: [{ value: textVal }] });
+            }
+          }
+        }
+
+        if (customFieldsValues.length) body.custom_fields_values = customFieldsValues;
+
+        if (Object.keys(body).length === 0) {
+          results.push({ leadId: r.leadId!, leadNome: r.leadNome, status: 'ok' });
+          continue;
+        }
+
+        await kommoFetch('/leads', 'PATCH', [{ id: r.leadId, ...body }]);
+        results.push({ leadId: r.leadId!, leadNome: r.leadNome, status: 'ok' });
+      } catch (err: unknown) {
+        results.push({
+          leadId: r.leadId!, leadNome: r.leadNome, status: 'erro',
+          erro: err instanceof Error ? err.message : 'Erro desconhecido',
+        });
+      }
+
+      if (i < selecionados.length - 1) await new Promise(res => setTimeout(res, 300));
+    }
+
+    setUpdateResults(results);
+    setStep('update-resultado');
+  }, [resultados, fieldConfigs, akData]);
+
+  const updateFieldConfig = useCallback((key: string, patch: Partial<FieldConfig>) => {
+    setFieldConfigs(prev => prev.map(c => c.key === key ? { ...c, ...patch } : c));
+  }, []);
+
+  const encontrados = resultados.filter(r => r.status === 'encontrado').length;
+  const naoEncontrados = resultados.filter(r => r.status === 'nao_encontrado').length;
+  const erros = resultados.filter(r => r.status === 'erro').length;
+  const selecionadosCount = resultados.filter(r => r.selecionado).length;
+  const progressPercent = progress.total > 0 ? Math.round((progress.atual / progress.total) * 100) : 0;
+
+  const alertaErro = error ? (
+    <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-3">
+      <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+      <span className="text-red-300 text-sm flex-1">{error}</span>
+      <button onClick={() => setError('')}><X className="w-4 h-4 text-red-400" /></button>
+    </div>
+  ) : null;
+
+  // ── Step: upload ──────────────────────────────────────────────────────────
+  if (step === 'upload') return (
+    <div className="space-y-6">
+      <div className="text-center mb-2">
+        <h2 className="text-2xl font-bold text-white mb-2">Atualizar Leads no Kommo</h2>
+        <p className="text-slate-400 max-w-xl mx-auto">
+          Faça upload de uma planilha, pesquise os leads no Kommo e configure as atualizações em massa.
+        </p>
+      </div>
+
+      {alertaErro}
+
+      {/* Visão geral das etapas */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {[
+          { n: 1, label: 'Upload da Planilha', desc: 'Carregue os dados', ativo: true },
+          { n: 2, label: 'Configurar Busca', desc: 'Mapeie as colunas', ativo: false },
+          { n: 3, label: 'Resultados', desc: 'Leads encontrados', ativo: false },
+          { n: 4, label: 'Atualizar', desc: 'Configure e aplique', ativo: false },
+        ].map((s) => (
+          <div key={s.n} className={`rounded-xl p-4 border text-center transition-all ${s.ativo ? 'border-purple-500/40 bg-purple-500/5' : 'border-white/[0.06] bg-white/[0.02] opacity-40'}`}>
+            <div className={`w-8 h-8 rounded-full mx-auto mb-2 flex items-center justify-center text-sm font-bold ${s.ativo ? 'bg-purple-500/20 text-purple-400' : 'bg-white/[0.05] text-slate-500'}`}>{s.n}</div>
+            <p className={`text-sm font-semibold ${s.ativo ? 'text-white' : 'text-slate-500'}`}>{s.label}</p>
+            <p className="text-xs text-slate-600 mt-0.5">{s.desc}</p>
+          </div>
+        ))}
+      </div>
+
+      <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/[0.06]">
+          <span className="text-white font-semibold">
+            <Upload className="w-4 h-4 inline mr-2 text-purple-400" />
+            Carregar Planilha com Dados dos Leads
+          </span>
+        </div>
+        <div className="p-6 space-y-4">
+          {loading ? (
+            <div className="text-center py-12">
+              <RotateCcw className="w-8 h-8 text-purple-400 animate-spin mx-auto mb-3" />
+              <p className="text-slate-400 text-sm">Processando arquivo...</p>
+            </div>
+          ) : (
+            <UploadZone
+              onFile={handleUpload}
+              label="Arraste a planilha com os dados dos leads"
+              sublabel="ou clique para selecionar (.xlsx / .xls)"
+            />
+          )}
+          <div className="rounded-xl bg-white/[0.03] p-4 text-sm text-slate-400 space-y-1.5">
+            <p className="font-semibold text-slate-300">Modos de busca disponíveis:</p>
+            <ul className="list-disc ml-5 space-y-1">
+              <li><strong className="text-blue-400">ID do Lead</strong> — busca direta pelo ID Kommo (mais rápido e preciso)</li>
+              <li><strong className="text-purple-400">Telefone</strong> — busca pelo contato associado ao lead</li>
+              <li><strong className="text-emerald-400">Pesquisa Geral</strong> — busca por nome, e-mail ou qualquer campo</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Step: mapeamento ──────────────────────────────────────────────────────
+  if (step === 'mapeamento') return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setStep('upload')} className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] text-slate-400 transition-all">
+          <ChevronRight className="w-4 h-4 rotate-180" />
+        </button>
+        <div>
+          <h2 className="text-xl font-bold text-white">Configurar Busca no Kommo</h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            <FileSpreadsheet className="w-3 h-3 inline mr-1" />
+            {akFileName} — {akData.length.toLocaleString('pt-BR')} linhas detectadas
+          </p>
+        </div>
+      </div>
+
+      {alertaErro}
+
+      <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/[0.06]">
+          <span className="text-white font-semibold">Campo de Busca no Kommo</span>
+        </div>
+        <div className="p-6 space-y-6">
+          <p className="text-sm text-slate-400">
+            Selecione como a busca será realizada no Kommo e qual coluna da planilha contém esses dados.
+          </p>
+
+          {/* Seletor do tipo de busca */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            {([
+              {
+                value: 'id' as AkCampoBusca,
+                label: 'ID do Lead',
+                desc: 'Busca direta pelo ID Kommo. Mais rápido e preciso.',
+                activeClass: 'border-blue-500/40 bg-blue-500/5',
+                labelClass: 'text-blue-400',
+              },
+              {
+                value: 'telefone' as AkCampoBusca,
+                label: 'Telefone',
+                desc: 'Busca pelo contato do lead via número de telefone.',
+                activeClass: 'border-purple-500/40 bg-purple-500/5',
+                labelClass: 'text-purple-400',
+              },
+              {
+                value: 'geral' as AkCampoBusca,
+                label: 'Pesquisa Geral',
+                desc: 'Busca por nome, e-mail ou qualquer informação do lead.',
+                activeClass: 'border-emerald-500/40 bg-emerald-500/5',
+                labelClass: 'text-emerald-400',
+              },
+            ]).map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setCampoBusca(opt.value)}
+                className={`text-left p-4 rounded-xl border-2 transition-all ${
+                  campoBusca === opt.value
+                    ? opt.activeClass
+                    : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
+                }`}
+              >
+                <p className={`font-semibold text-sm ${campoBusca === opt.value ? opt.labelClass : 'text-slate-300'}`}>
+                  {opt.label}
+                </p>
+                <p className="text-xs text-slate-500 mt-1">{opt.desc}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Seletor de coluna */}
+          <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-4">
+            <label className="block text-sm font-semibold text-slate-300 mb-3">
+              Coluna da planilha com os dados para busca:
+            </label>
+            <select
+              value={colunaBusca}
+              onChange={e => setColunaBusca(e.target.value)}
+              className="w-full px-3 py-2.5 bg-[#0d1117] border border-white/[0.08] rounded-lg text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-2 focus:ring-purple-500"
+            >
+              <option value="">-- Selecione a coluna --</option>
+              {akColunas.map(col => <option key={col} value={col}>{col}</option>)}
+            </select>
+            {colunaBusca && akPreview[colunaBusca] && (
+              <div className="mt-3 px-3 py-2 bg-black/30 rounded-lg">
+                <p className="text-xs text-slate-500 mb-1.5">Pré-visualização (3 primeiros valores):</p>
+                {akPreview[colunaBusca].map((v, i) => (
+                  <span key={i} className="block text-xs text-slate-400 truncate font-mono">{v}</span>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-center pt-2">
+            <button
+              onClick={handleIniciarBusca}
+              disabled={!colunaBusca}
+              className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              <Search className="w-4 h-4 inline mr-2" />
+              Iniciar Busca no Kommo ({akData.length.toLocaleString('pt-BR')} leads)
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  // ── Step: buscando ────────────────────────────────────────────────────────
+  if (step === 'buscando') return (
+    <div className="flex flex-col items-center justify-center py-20 space-y-6">
+      <div className="w-20 h-20 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
+        <RotateCcw className="w-8 h-8 text-purple-400 animate-spin" />
+      </div>
+      <div className="text-center">
+        <h2 className="text-xl font-bold text-white mb-1">Buscando no Kommo...</h2>
+        <p className="text-sm text-slate-400">
+          {progress.atual.toLocaleString('pt-BR')} de {progress.total.toLocaleString('pt-BR')} leads processados
+        </p>
+      </div>
+      <div className="w-80 space-y-1">
+        <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <p className="text-right text-xs text-slate-500">{progressPercent}%</p>
+      </div>
+      <button
+        onClick={() => { abortRef.current = true; }}
+        className="px-4 py-2 rounded-lg bg-white/[0.05] text-slate-400 border border-white/[0.08] hover:bg-white/[0.08] text-sm transition-all"
+      >
+        <X className="w-4 h-4 inline mr-1" />Cancelar Busca
+      </button>
+    </div>
+  );
+
+  // ── Step: resultado ───────────────────────────────────────────────────────
+  if (step === 'resultado') return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-3">
+        <button onClick={() => setStep('mapeamento')} className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] text-slate-400 transition-all">
+          <ChevronRight className="w-4 h-4 rotate-180" />
+        </button>
+        <h2 className="text-xl font-bold text-white">Resultados da Busca</h2>
+        <span className="ml-auto text-xs px-3 py-1 bg-white/[0.05] text-slate-400 rounded-full">
+          {akFileName}
+        </span>
+      </div>
+
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard value={resultados.length} label="Total Processado" />
+        <StatCard value={encontrados} label="Encontrados" gradient="linear-gradient(135deg, #00b894, #55efc4)" />
+        <StatCard value={naoEncontrados} label="Não Encontrados" gradient="linear-gradient(135deg, #e17055, #fab1a0)" />
+        <StatCard value={selecionadosCount} label="Selecionados" gradient="linear-gradient(135deg, #6c5ce7, #a29bfe)" />
+      </div>
+
+      {erros > 0 && (
+        <div className="px-4 py-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-400 shrink-0" />
+          <span className="text-amber-300 text-sm">{erros} lead(s) tiveram erro na busca. Verifique o token e subdomínio do Kommo.</span>
+        </div>
+      )}
+
+      <div className="flex flex-wrap gap-3 items-center justify-between">
+        <div className="flex gap-2">
+          <button
+            onClick={() => toggleTodos(true)}
+            className="px-4 py-2 rounded-lg bg-white/[0.05] border border-white/[0.08] text-sm text-slate-300 hover:bg-white/[0.08] transition-all"
+          >
+            Selecionar todos encontrados
+          </button>
+          <button
+            onClick={() => toggleTodos(false)}
+            className="px-4 py-2 rounded-lg bg-white/[0.05] border border-white/[0.08] text-sm text-slate-300 hover:bg-white/[0.08] transition-all"
+          >
+            Limpar seleção
+          </button>
+        </div>
+        <button
+          onClick={handleEntrarCampos}
+          disabled={selecionadosCount === 0}
+          className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold shadow-lg transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          <Zap className="w-4 h-4 inline mr-2" />
+          Configurar Atualização ({selecionadosCount})
+        </button>
+      </div>
+
+      <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-white/[0.03] border-b border-white/[0.06]">
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">#</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Valor Buscado</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">ID Lead</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Nome do Lead</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Status</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold text-slate-500">Selecionar</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/[0.04]">
+              {resultados.map((r) => (
+                <tr key={r.idx} className={`hover:bg-white/[0.02] transition-colors ${r.status !== 'encontrado' ? 'opacity-50' : ''}`}>
+                  <td className="px-4 py-2.5 text-xs text-slate-600">{r.idx + 1}</td>
+                  <td className="px-4 py-2.5 text-sm text-slate-300 font-mono max-w-[160px] truncate">{r.valorBusca}</td>
+                  <td className="px-4 py-2.5">
+                    {r.leadId ? (
+                      <a
+                        href={`https://${env.KOMMO_SUBDOMAIN}.kommo.com/leads/detail/${r.leadId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-blue-400 hover:text-blue-300 font-mono text-sm"
+                      >
+                        {r.leadId}
+                      </a>
+                    ) : (
+                      <span className="text-slate-600">—</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-sm text-white max-w-[200px] truncate">{r.leadNome || '—'}</td>
+                  <td className="px-4 py-2.5">
+                    {r.status === 'encontrado' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-medium">
+                        <CheckCircle className="w-3 h-3" />Encontrado
+                      </span>
+                    )}
+                    {r.status === 'nao_encontrado' && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/15 text-red-400 text-xs font-medium">
+                        <X className="w-3 h-3" />Não encontrado
+                      </span>
+                    )}
+                    {r.status === 'erro' && (
+                      <span
+                        title={r.erro}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-400 text-xs font-medium cursor-help"
+                      >
+                        <AlertCircle className="w-3 h-3" />Erro
+                      </span>
+                    )}
+                  </td>
+                  <td className="px-4 py-2.5 text-center">
+                    {r.status === 'encontrado' && (
+                      <input
+                        type="checkbox"
+                        checked={r.selecionado}
+                        onChange={() => toggleSelecionado(r.idx)}
+                        className="w-4 h-4 accent-purple-500 cursor-pointer"
+                      />
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="text-center">
+        <button onClick={handleReset} className="px-4 py-2 text-sm text-slate-500 hover:text-slate-300 transition-all">
+          <RotateCcw className="w-3 h-3 inline mr-1" />Nova Busca
+        </button>
+      </div>
+    </div>
+  );
+
+  // ── Step: campos (skeleton para futuras funções) ───────────────────────────
+  // ── Step: campos ─────────────────────────────────────────────────────────
+  if (step === 'campos') {
+    const stdConfigs = fieldConfigs.filter(c => c.kind !== 'custom');
+
+    // Separa campos customizados por aba (igual ao Kommo)
+    const cfPrincipal = fieldConfigs.filter(c => c.kind === 'custom' && !c.label.toLowerCase().startsWith('anh_') && !c.label.toLowerCase().startsWith('sum_'));
+    const cfSumare    = fieldConfigs.filter(c => c.kind === 'custom' && c.label.toLowerCase().startsWith('sum_'));
+    const cfAnhanguera = fieldConfigs.filter(c => c.kind === 'custom' && c.label.toLowerCase().startsWith('anh_'));
+
+    const cfTabMap = { principal: cfPrincipal, sumare: cfSumare, anhanguera: cfAnhanguera } as const;
+    const cfTabVisible = cfTabMap[cfTab];
+
+    const enabledCount = fieldConfigs.filter(c => c.enabled).length;
+
+    const selectCls = 'w-full px-3 py-2 bg-[#0d1117] border border-white/[0.08] rounded-lg text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-purple-500';
+    const inputCls  = 'w-full px-3 py-2 bg-[#0d1117] border border-white/[0.08] rounded-lg text-sm text-white placeholder:text-slate-600 focus:outline-none focus:ring-1 focus:ring-purple-500';
+
+    const renderFieldRow = (cfg: FieldConfig) => (
+      <div key={cfg.key} className={`flex flex-col gap-2 p-3 rounded-xl border transition-all ${cfg.enabled ? 'border-purple-500/30 bg-purple-500/5' : 'border-white/[0.05] bg-transparent'}`}>
+        {/* Cabeçalho */}
+        <label className="flex items-center gap-2.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={cfg.enabled}
+            onChange={e => updateFieldConfig(cfg.key, { enabled: e.target.checked })}
+            className="w-4 h-4 accent-purple-500 shrink-0 cursor-pointer"
+          />
+          <span className={`text-sm font-medium ${cfg.enabled ? 'text-white' : 'text-slate-400'}`}>{cfg.label}</span>
+        </label>
+
+        {cfg.enabled && (
+          <div className="ml-6 space-y-2">
+            {/* Responsável: só dropdown de usuário */}
+            {cfg.kind === 'responsavel' && (
+              <select value={cfg.valorId} onChange={e => updateFieldConfig(cfg.key, { valorId: e.target.value })} className={selectCls}>
+                <option value="">-- Selecionar usuário --</option>
+                {kommoUsers.map(u => <option key={u.id} value={String(u.id)}>{u.name}</option>)}
+              </select>
+            )}
+
+            {/* Status: pipeline → status */}
+            {cfg.kind === 'status' && (() => {
+              const [selPipeId, selStatId] = cfg.valorId.split(':');
+              const selPipe = kommoPipelines.find(p => String(p.id) === selPipeId);
+              return (
+                <div className="flex gap-2">
+                  <select
+                    value={selPipeId ?? ''}
+                    onChange={e => updateFieldConfig(cfg.key, { valorId: e.target.value + ':' })}
+                    className={selectCls}
+                  >
+                    <option value="">-- Pipeline --</option>
+                    {kommoPipelines.map(p => <option key={p.id} value={String(p.id)}>{p.name}</option>)}
+                  </select>
+                  <select
+                    value={selStatId ?? ''}
+                    onChange={e => updateFieldConfig(cfg.key, { valorId: (selPipeId ?? '') + ':' + e.target.value })}
+                    className={selectCls}
+                    disabled={!selPipe}
+                  >
+                    <option value="">-- Status --</option>
+                    {(selPipe?.statuses ?? []).map(s => <option key={s.id} value={String(s.id)}>{s.name}</option>)}
+                  </select>
+                </div>
+              );
+            })()}
+
+            {/* Campo customizado do tipo SELECT → dropdown com opções do Kommo */}
+            {cfg.kind === 'custom' && cfg.enums && cfg.enums.length > 0 && (
+              <select
+                value={cfg.valorId}
+                onChange={e => {
+                  const chosen = cfg.enums!.find(en => String(en.id) === e.target.value);
+                  updateFieldConfig(cfg.key, { valorId: e.target.value, enumValue: chosen?.value ?? '' });
+                }}
+                className={selectCls}
+              >
+                <option value="">-- Selecionar --</option>
+                {cfg.enums.map(en => (
+                  <option key={en.id} value={String(en.id)}>{en.value}</option>
+                ))}
+              </select>
+            )}
+
+            {/* Campo customizado de texto / Nome do Lead → coluna ou valor fixo */}
+            {(cfg.kind === 'nome' || (cfg.kind === 'custom' && (!cfg.enums || cfg.enums.length === 0))) && (
+              <>
+                <div className="flex gap-2">
+                  <button onClick={() => updateFieldConfig(cfg.key, { fonte: 'coluna' })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${cfg.fonte === 'coluna' ? 'bg-purple-600 text-white' : 'bg-white/[0.05] text-slate-400 hover:bg-white/[0.08]'}`}>
+                    Da planilha
+                  </button>
+                  <button onClick={() => updateFieldConfig(cfg.key, { fonte: 'fixo' })}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${cfg.fonte === 'fixo' ? 'bg-purple-600 text-white' : 'bg-white/[0.05] text-slate-400 hover:bg-white/[0.08]'}`}>
+                    Valor fixo
+                  </button>
+                </div>
+                {cfg.fonte === 'coluna' ? (
+                  <select value={cfg.coluna} onChange={e => updateFieldConfig(cfg.key, { coluna: e.target.value })} className={selectCls}>
+                    <option value="">-- Selecionar coluna --</option>
+                    {akColunas.map(col => <option key={col} value={col}>{col}</option>)}
+                  </select>
+                ) : (
+                  <input type="text" value={cfg.valorFixo} onChange={e => updateFieldConfig(cfg.key, { valorFixo: e.target.value })}
+                    placeholder="Digite o valor que será aplicado a todos os leads..."
+                    className={inputCls} />
+                )}
+              </>
+            )}
+          </div>
+        )}
+      </div>
+    );
+
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setStep('resultado')} className="p-2 rounded-lg bg-white/[0.05] hover:bg-white/[0.08] text-slate-400 transition-all">
+            <ChevronRight className="w-4 h-4 rotate-180" />
+          </button>
+          <div>
+            <h2 className="text-xl font-bold text-white">Configurar Atualização</h2>
+            <p className="text-xs text-slate-500 mt-0.5">{selecionadosCount} leads · {enabledCount} campo{enabledCount !== 1 ? 's' : ''} selecionado{enabledCount !== 1 ? 's' : ''}</p>
+          </div>
+        </div>
+
+        {metaError && (
+          <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+            <span className="text-red-300 text-sm flex-1">{metaError}</span>
+            <button onClick={() => setMetaError('')}><X className="w-4 h-4 text-red-400" /></button>
+          </div>
+        )}
+
+        {metaLoading ? (
+          <div className="flex flex-col items-center py-14 gap-4">
+            <RotateCcw className="w-8 h-8 text-purple-400 animate-spin" />
+            <p className="text-slate-400 text-sm">Carregando campos do Kommo...</p>
+          </div>
+        ) : (
+          <>
+            {/* Campos padrão */}
+            <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
+              <div className="px-5 py-3.5 border-b border-white/[0.06] flex items-center gap-2">
+                <SlidersHorizontal className="w-4 h-4 text-purple-400" />
+                <span className="text-sm font-semibold text-white">Informações do Lead</span>
+              </div>
+              <div className="p-4 space-y-2">
+                {stdConfigs.map(renderFieldRow)}
+              </div>
+            </div>
+
+            {/* Campos customizados por aba */}
+            <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
+              {/* Header com abas */}
+              <div className="px-5 py-3.5 border-b border-white/[0.06] flex items-center gap-2 flex-wrap">
+                <SlidersHorizontal className="w-4 h-4 text-blue-400 shrink-0" />
+                <span className="text-sm font-semibold text-white mr-2">Campos Customizados</span>
+                {/* Abas */}
+                {([
+                  { key: 'principal',   label: 'Principal',    count: cfPrincipal.length,  color: 'from-slate-600 to-slate-500' },
+                  { key: 'sumare',      label: 'Sumaré',       count: cfSumare.length,     color: 'from-blue-600 to-cyan-600' },
+                  { key: 'anhanguera',  label: 'Anhanguera',   count: cfAnhanguera.length, color: 'from-orange-600 to-amber-500' },
+                ] as const).map(tab => (
+                  <button
+                    key={tab.key}
+                    onClick={() => setCfTab(tab.key)}
+                    className={`flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+                      cfTab === tab.key
+                        ? `bg-gradient-to-r ${tab.color} text-white shadow-sm`
+                        : 'bg-white/[0.05] text-slate-400 hover:bg-white/[0.08]'
+                    }`}
+                  >
+                    {tab.label}
+                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${cfTab === tab.key ? 'bg-white/20' : 'bg-white/[0.06]'}`}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+
+              {/* Lista de campos da aba ativa */}
+              <div className="p-4 space-y-2 max-h-96 overflow-y-auto">
+                {cfTabVisible.length === 0
+                  ? <p className="text-sm text-slate-600 text-center py-6">Nenhum campo nesta aba</p>
+                  : cfTabVisible.map(renderFieldRow)
+                }
+              </div>
+            </div>
+
+            <div className="flex justify-center pt-2">
+              <button
+                onClick={handleAplicarAtualizacoes}
+                disabled={selecionadosCount === 0 || enabledCount === 0}
+                className="px-8 py-3 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Zap className="w-4 h-4 inline mr-2" />
+                Aplicar nos {selecionadosCount} leads selecionados
+              </button>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ── Step: atualizando ─────────────────────────────────────────────────────
+  if (step === 'atualizando') {
+    const pct = progress.total > 0 ? Math.round((progress.atual / progress.total) * 100) : 0;
+    return (
+      <div className="flex flex-col items-center justify-center py-20 space-y-6">
+        <div className="w-20 h-20 rounded-full bg-purple-500/10 border border-purple-500/30 flex items-center justify-center">
+          <Zap className="w-8 h-8 text-purple-400 animate-pulse" />
+        </div>
+        <div className="text-center">
+          <h2 className="text-xl font-bold text-white mb-1">Atualizando no Kommo...</h2>
+          <p className="text-sm text-slate-400">{progress.atual} de {progress.total} leads processados</p>
+        </div>
+        <div className="w-80 space-y-1">
+          <div className="w-full h-2 bg-white/[0.05] rounded-full overflow-hidden">
+            <div className="h-full rounded-full bg-gradient-to-r from-purple-500 to-blue-500 transition-all duration-300" style={{ width: `${pct}%` }} />
+          </div>
+          <p className="text-right text-xs text-slate-500">{pct}%</p>
+        </div>
+        <button onClick={() => { abortRef.current = true; }} className="px-4 py-2 rounded-lg bg-white/[0.05] text-slate-400 border border-white/[0.08] text-sm hover:bg-white/[0.08] transition-all">
+          <X className="w-4 h-4 inline mr-1" />Cancelar
+        </button>
+      </div>
+    );
+  }
+
+  // ── Step: update-resultado ────────────────────────────────────────────────
+  if (step === 'update-resultado') {
+    const okCount  = updateResults.filter(r => r.status === 'ok').length;
+    const errCount = updateResults.filter(r => r.status === 'erro').length;
+    return (
+      <div className="space-y-6">
+        <div className="text-center">
+          <div className={`w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center ${errCount === 0 ? 'bg-emerald-500/10 border border-emerald-500/20' : 'bg-amber-500/10 border border-amber-500/20'}`}>
+            {errCount === 0 ? <CheckCircle className="w-8 h-8 text-emerald-400" /> : <AlertCircle className="w-8 h-8 text-amber-400" />}
+          </div>
+          <h2 className="text-xl font-bold text-white mb-1">Atualização concluída</h2>
+          <p className="text-slate-400 text-sm">{okCount} atualizados com sucesso · {errCount} com erro</p>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <StatCard value={okCount}  label="Atualizados" gradient="linear-gradient(135deg,#00b894,#55efc4)" />
+          <StatCard value={errCount} label="Erros" gradient={errCount > 0 ? 'linear-gradient(135deg,#e17055,#fab1a0)' : undefined} />
+        </div>
+
+        {errCount > 0 && (
+          <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
+            <div className="px-5 py-3.5 border-b border-white/[0.06]">
+              <span className="text-sm font-semibold text-amber-400">Leads com erro</span>
+            </div>
+            <div className="divide-y divide-white/[0.04]">
+              {updateResults.filter(r => r.status === 'erro').map(r => (
+                <div key={r.leadId} className="px-5 py-3 flex items-center gap-3">
+                  <span className="text-sm text-white font-mono shrink-0">{r.leadId}</span>
+                  <span className="text-sm text-slate-300 truncate flex-1">{r.leadNome || '—'}</span>
+                  <span className="text-xs text-red-400 truncate max-w-[200px]">{r.erro}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <div className="flex flex-wrap gap-3 justify-center">
+          <button onClick={() => setStep('resultado')} className="px-5 py-2.5 rounded-xl bg-white/[0.05] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] font-semibold transition-all">
+            <ChevronRight className="w-4 h-4 inline mr-1 rotate-180" />Voltar aos resultados
+          </button>
+          <button onClick={handleReset} className="px-5 py-2.5 rounded-xl bg-white/[0.05] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] font-semibold transition-all">
+            <RotateCcw className="w-4 h-4 inline mr-1" />Nova busca
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// Aba: Consultar Lead no Kommo
+// ---------------------------------------------------------------------------
+function ConsultarLeadTab() {
+  const [mode, setMode] = useState<ConsultaMode>('id');
+  const [query, setQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [results, setResults] = useState<LeadDetalhe[]>([]);
+  const [searched, setSearched] = useState(false);
+
+  const handleSearch = useCallback(async () => {
+    const q = query.trim();
+    if (!q) return;
+    if (!env.KOMMO_SUBDOMAIN || !env.KOMMO_TOKEN) {
+      setError('Token/Subdomínio do Kommo não configurado.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setResults([]);
+    setSearched(false);
+
+    try {
+      let leadIds: number[] = [];
+
+      if (mode === 'id') {
+        const id = parseInt(q, 10);
+        if (!isNaN(id)) leadIds = [id];
+      } else if (mode === 'telefone') {
+        const clean = q.replace(/\D/g, '');
+        const data = await kommoGet(
+          `/contacts?query=${encodeURIComponent(clean)}&with=leads&limit=10`
+        ) as { _embedded?: { contacts?: { _embedded?: { leads?: { id: number }[] } }[] } };
+        for (const c of data?._embedded?.contacts ?? []) {
+          for (const l of c._embedded?.leads ?? []) leadIds.push(l.id);
+        }
+        leadIds = [...new Set(leadIds)].slice(0, 5);
+      } else {
+        // ra ou geral
+        const data = await kommoGet(
+          `/leads?query=${encodeURIComponent(q)}&limit=10`
+        ) as { _embedded?: { leads?: { id: number }[] } };
+        leadIds = (data?._embedded?.leads ?? []).map(l => l.id);
+      }
+
+      if (!leadIds.length) {
+        setSearched(true);
+        setLoading(false);
+        return;
+      }
+
+      const details: LeadDetalhe[] = [];
+      for (const id of leadIds) {
+        const d = await buscarDetalhesLead(id);
+        if (d) details.push(d);
+      }
+      setResults(details);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Erro na busca');
+    } finally {
+      setSearched(true);
+      setLoading(false);
+    }
+  }, [mode, query]);
+
+  const modeOptions: { value: ConsultaMode; label: string; desc: string; color: string; activeClass: string }[] = [
+    { value: 'id',       label: 'ID do Lead',      desc: 'Busca direta pelo ID Kommo',            color: 'text-blue-400',    activeClass: 'border-blue-500/40 bg-blue-500/5' },
+    { value: 'ra',       label: 'RA / Matrícula',  desc: 'Busca pelo RA do aluno',                color: 'text-amber-400',   activeClass: 'border-amber-500/40 bg-amber-500/5' },
+    { value: 'telefone', label: 'Telefone',         desc: 'Busca pelo telefone do contato',        color: 'text-purple-400',  activeClass: 'border-purple-500/40 bg-purple-500/5' },
+    { value: 'geral',    label: 'Pesquisa Geral',   desc: 'Busca por nome, e-mail ou qualquer campo', color: 'text-emerald-400', activeClass: 'border-emerald-500/40 bg-emerald-500/5' },
+  ];
+
+  const placeholder: Record<ConsultaMode, string> = {
+    id: 'Ex: 23511493',
+    ra: 'Ex: 12345678',
+    telefone: 'Ex: 11999999999',
+    geral: 'Ex: João Silva ou e-mail...',
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="text-center mb-2">
+        <h2 className="text-2xl font-bold text-white mb-2">Consultar Lead no Kommo</h2>
+        <p className="text-slate-400 max-w-xl mx-auto">
+          Busque um lead pelo ID, RA, telefone ou pesquisa geral e visualize seus dados completos.
+        </p>
+      </div>
+
+      {/* Seletor de modo */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {modeOptions.map(opt => (
+          <button
+            key={opt.value}
+            onClick={() => { setMode(opt.value); setQuery(''); setResults([]); setSearched(false); }}
+            className={`text-left p-4 rounded-xl border-2 transition-all ${
+              mode === opt.value ? opt.activeClass : 'border-white/[0.06] bg-white/[0.02] hover:border-white/[0.12]'
+            }`}
+          >
+            <p className={`font-semibold text-sm ${mode === opt.value ? opt.color : 'text-slate-300'}`}>{opt.label}</p>
+            <p className="text-xs text-slate-500 mt-1">{opt.desc}</p>
+          </button>
+        ))}
+      </div>
+
+      {/* Campo de busca */}
+      <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
+        <div className="px-6 py-4 border-b border-white/[0.06]">
+          <span className="text-white font-semibold">
+            <Search className="w-4 h-4 inline mr-2 text-blue-400" />
+            Buscar por {modeOptions.find(m => m.value === mode)?.label}
+          </span>
+        </div>
+        <div className="p-6">
+          <div className="flex gap-3">
+            <input
+              type="text"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && !loading && handleSearch()}
+              placeholder={placeholder[mode]}
+              className="flex-1 px-4 py-3 bg-[#0d1117] border border-white/[0.08] rounded-xl text-white placeholder:text-slate-600 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <button
+              onClick={handleSearch}
+              disabled={loading || !query.trim()}
+              className="px-6 py-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 text-white font-semibold shadow-lg hover:shadow-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading
+                ? <RotateCcw className="w-4 h-4 animate-spin" />
+                : <Search className="w-4 h-4" />}
+            </button>
+          </div>
+
+          {error && (
+            <div className="mt-4 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+              <span className="text-red-300 text-sm flex-1">{error}</span>
+              <button onClick={() => setError('')}><X className="w-4 h-4 text-red-400" /></button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Resultados */}
+      {loading && (
+        <div className="flex flex-col items-center py-14 gap-4">
+          <div className="w-16 h-16 rounded-full bg-blue-500/10 border border-blue-500/20 flex items-center justify-center">
+            <RotateCcw className="w-7 h-7 text-blue-400 animate-spin" />
+          </div>
+          <p className="text-slate-400 text-sm">Consultando Kommo...</p>
+        </div>
+      )}
+
+      {!loading && searched && results.length === 0 && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 rounded-full bg-white/[0.04] border border-white/[0.08] flex items-center justify-center mx-auto mb-4">
+            <Search className="w-7 h-7 text-slate-600" />
+          </div>
+          <p className="text-slate-400 font-medium">Nenhum lead encontrado</p>
+          <p className="text-slate-600 text-sm mt-1">Tente outro critério de busca</p>
+        </div>
+      )}
+
+      {!loading && results.length > 0 && (
+        <div className="space-y-4">
+          <p className="text-sm text-slate-500">{results.length} lead{results.length > 1 ? 's' : ''} encontrado{results.length > 1 ? 's' : ''}</p>
+          {results.map(lead => (
+            <div key={lead.id} className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
+              {/* Header do card */}
+              <div className="px-6 py-4 border-b border-white/[0.06] flex items-center gap-3">
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-semibold truncate">{lead.nomeLead || lead.nomeContato || '—'}</p>
+                  <p className="text-xs text-slate-500 mt-0.5">{lead.statusNome} · {lead.pipeline}</p>
+                </div>
+                <a
+                  href={`https://${env.KOMMO_SUBDOMAIN}.kommo.com/leads/detail/${lead.id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-400 border border-blue-500/20 text-xs font-semibold hover:bg-blue-500/20 transition-all shrink-0"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  Abrir no Kommo
+                </a>
+              </div>
+
+              {/* Grid de dados */}
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-0 divide-x divide-y divide-white/[0.04]">
+                {[
+                  { icon: Hash,       label: 'ID Lead',            value: String(lead.id),          color: 'text-blue-400' },
+                  { icon: User,       label: 'Nome do Contato',    value: lead.nomeContato,          color: 'text-white' },
+                  { icon: Phone,      label: 'Telefone',           value: lead.telefone,             color: 'text-emerald-400' },
+                  { icon: BookOpen,   label: 'RA',                 value: lead.ra,                   color: 'text-amber-400' },
+                  { icon: MapPin,     label: 'Polo',               value: lead.polo,                 color: 'text-purple-400' },
+                  { icon: GitBranch,  label: 'Pipeline',           value: lead.pipeline,             color: 'text-slate-300' },
+                  { icon: CheckCircle,label: 'Status',             value: lead.statusNome,           color: 'text-cyan-400' },
+                  { icon: UserCheck,  label: 'Responsável',        value: lead.responsavel,          color: 'text-slate-300' },
+                ].map(({ icon: Icon, label, value, color }) => (
+                  <div key={label} className="px-5 py-4">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <Icon className="w-3 h-3 text-slate-600 shrink-0" />
+                      <span className="text-xs font-medium text-slate-500 uppercase tracking-wide">{label}</span>
+                    </div>
+                    <p className={`text-sm font-semibold ${value ? color : 'text-slate-700'} truncate`}>
+                      {value || '—'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Componente Principal
 // ---------------------------------------------------------------------------
 export default function FormatarPlanilhaPage() {
+  const [pageTab, setPageTab] = useState<'formatar' | 'atualizar' | 'consultar'>('formatar');
   const [step, setStep] = useState<Step>('inicio');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -527,7 +1947,7 @@ export default function FormatarPlanilhaPage() {
     return Math.round((searchResult.encontrados / searchResult.totalLinhas) * 1000) / 10;
   }, [searchResult]);
 
-  // ---- Renders ----
+  // ---- Renders (aba Formatar) ----
 
   const renderInicio = () => (
     <div className="space-y-6">
@@ -903,28 +2323,79 @@ export default function FormatarPlanilhaPage() {
   return (
     <div className="min-h-screen py-8 px-6" style={{ background: 'linear-gradient(135deg, #0c1222 0%, #111a2e 50%, #0f1628 100%)' }}>
       <div className="max-w-5xl mx-auto">
-        {loading && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-            <div className="bg-[#161b22] rounded-2xl p-8 border border-white/[0.1] text-center">
-              <RotateCcw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-3" />
-              <p className="text-white font-medium">Processando...</p>
-            </div>
+
+        {/* Tab switcher */}
+        <div className="mb-8 flex justify-center">
+          <div className="flex rounded-2xl bg-[#161b22] border border-white/[0.07] p-1.5 gap-1">
+            <button
+              onClick={() => setPageTab('formatar')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                pageTab === 'formatar'
+                  ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Formatar
+            </button>
+            <button
+              onClick={() => setPageTab('atualizar')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                pageTab === 'atualizar'
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md shadow-purple-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Zap className="w-4 h-4" />
+              Atualizar Kommo
+            </button>
+            <button
+              onClick={() => setPageTab('consultar')}
+              className={`flex items-center gap-2 px-6 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                pageTab === 'consultar'
+                  ? 'bg-gradient-to-r from-cyan-600 to-blue-600 text-white shadow-md shadow-cyan-500/20'
+                  : 'text-slate-400 hover:text-white'
+              }`}
+            >
+              <Search className="w-4 h-4" />
+              Consultar Lead
+            </button>
           </div>
+        </div>
+
+        {/* Aba: Formatar */}
+        {pageTab === 'formatar' && (
+          <>
+            {loading && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <div className="bg-[#161b22] rounded-2xl p-8 border border-white/[0.1] text-center">
+                  <RotateCcw className="w-8 h-8 text-blue-400 animate-spin mx-auto mb-3" />
+                  <p className="text-white font-medium">Processando...</p>
+                </div>
+              </div>
+            )}
+
+            {error && (
+              <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-3">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
+                <span className="text-red-300 text-sm flex-1">{error}</span>
+                <button onClick={() => setError('')} className="text-red-400 hover:text-red-300"><X className="w-4 h-4" /></button>
+              </div>
+            )}
+
+            {step === 'inicio' && renderInicio()}
+            {step === 'pesquisar' && renderPesquisar()}
+            {step === 'resultado' && renderResultado()}
+            {step === 'tratar' && renderTratar()}
+            {step === 'tratar-resultado' && renderTratarResultado()}
+          </>
         )}
 
-        {error && (
-          <div className="mb-6 px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-400 shrink-0" />
-            <span className="text-red-300 text-sm flex-1">{error}</span>
-            <button onClick={() => setError('')} className="text-red-400 hover:text-red-300"><X className="w-4 h-4" /></button>
-          </div>
-        )}
+        {/* Aba: Atualizar Kommo */}
+        {pageTab === 'atualizar' && <AtualizarKommoTab />}
 
-        {step === 'inicio' && renderInicio()}
-        {step === 'pesquisar' && renderPesquisar()}
-        {step === 'resultado' && renderResultado()}
-        {step === 'tratar' && renderTratar()}
-        {step === 'tratar-resultado' && renderTratarResultado()}
+        {/* Aba: Consultar Lead */}
+        {pageTab === 'consultar' && <ConsultarLeadTab />}
       </div>
     </div>
   );
