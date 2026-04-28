@@ -43,7 +43,7 @@ type Step = 'inicio' | 'pesquisar' | 'resultado' | 'tratar' | 'tratar-resultado'
 // ---------------------------------------------------------------------------
 type AkStep = 'upload' | 'mapeamento' | 'buscando' | 'resultado' | 'campos' | 'atualizando' | 'update-resultado'
            | 'pre-criacao' | 'criando' | 'criacao-resultado';
-type AkCampoBusca = 'id' | 'telefone' | 'ra' | 'geral';
+type AkCampoBusca = 'id' | 'telefone' | 'ra' | 'cpf' | 'nome' | 'geral';
 
 interface KommoUser { id: number; name: string; }
 interface KommoStatus { id: number; name: string; }
@@ -363,9 +363,10 @@ function processarKommo(data: Record<string, unknown>[]): { rows: BaseRow[]; res
 // Busca de IDs
 // ---------------------------------------------------------------------------
 const PATTERNS_CPF = ['cpf', 'c.p.f', 'documento', 'doc'];
-const PATTERNS_ID  = ['id', 'lead_id', 'id lead', 'id kommo', 'id_lead', 'idlead', 'id do lead'];
-const PATTERNS_RA  = ['matricula', 'matrícula', 'ra', 'registro academico', 'registro acadêmico', 'reg. acad'];
-const PATTERNS_TEL = ['telefone', 'celular', 'fone', 'tel', 'phone', 'whatsapp', 'whats', 'contato'];
+const PATTERNS_ID   = ['id', 'lead_id', 'id lead', 'id kommo', 'id_lead', 'idlead', 'id do lead'];
+const PATTERNS_RA   = ['matricula', 'matrícula', 'ra', 'registro academico', 'registro acadêmico', 'reg. acad'];
+const PATTERNS_TEL  = ['telefone', 'celular', 'fone', 'tel', 'phone', 'whatsapp', 'whats', 'contato'];
+const PATTERNS_NOME = ['nome completo', 'nome', 'name', 'lead', 'aluno', 'candidato'];
 
 function detectarColuna(colunas: string[], patterns: string[]): string | null {
   const colunasLower: Record<string, string> = {};
@@ -563,21 +564,91 @@ async function buscarLeadPorId(id: string): Promise<{ id: number; name: string }
 
 async function buscarLeadPorTelefone(telefone: string): Promise<{ id: number; name: string } | null> {
   try {
-    const clean = telefone.replace(/\D/g, '');
-    if (!clean) return null;
-    const data = await kommoGet(
-      `/contacts?query=${encodeURIComponent(clean)}&with=leads&limit=5`
-    ) as { _embedded?: { contacts?: { _embedded?: { leads?: { id: number }[] } }[] } };
-    const contacts = data?._embedded?.contacts;
-    if (!contacts?.length) return null;
-    const leads = contacts[0]?._embedded?.leads;
-    if (!leads?.length) return null;
-    const leadId = leads[leads.length - 1].id;
-    const lead = await kommoGet(`/leads/${leadId}`) as { id: number; name: string };
-    return lead ? { id: lead.id, name: lead.name || '' } : null;
+    const digits = telefone.replace(/\D/g, '');
+    if (!digits) return null;
+
+    // Monta variações de formato para maximizar chances de match no Kommo
+    const variants = new Set<string>();
+    if (digits.startsWith('55') && digits.length >= 12) {
+      variants.add(digits);               // ex: 5511965117628
+      variants.add(digits.slice(2));      // sem DDI: 11965117628
+      // Tenta também sem o 9º dígito (celulares antigos SP/BR)
+      if (digits.length === 13) {
+        const ddd = digits.slice(2, 4);
+        const semNove = digits.slice(5);  // remove o "9" após o DDD
+        variants.add('55' + ddd + semNove);
+        variants.add(ddd + semNove);
+      }
+    } else if (digits.length === 11 || digits.length === 10) {
+      variants.add(digits);
+      variants.add('55' + digits);
+      // Também tenta com/sem 9º dígito
+      if (digits.length === 11) {
+        const ddd = digits.slice(0, 2);
+        const semNove = digits.slice(3);
+        variants.add(ddd + semNove);
+        variants.add('55' + ddd + semNove);
+      }
+    } else {
+      variants.add(digits);
+    }
+
+    for (const v of variants) {
+      const data = await kommoGet(
+        `/contacts?query=${encodeURIComponent(v)}&with=leads&limit=5`
+      ) as { _embedded?: { contacts?: { _embedded?: { leads?: { id: number }[] } }[] } };
+      const contacts = data?._embedded?.contacts;
+      if (contacts?.length) {
+        const leads = contacts[0]?._embedded?.leads;
+        if (leads?.length) {
+          const leadId = leads[leads.length - 1].id;
+          const lead = await kommoGet(`/leads/${leadId}`) as { id: number; name: string };
+          if (lead) return { id: lead.id, name: lead.name || '' };
+        }
+      }
+    }
+    return null;
   } catch {
     return null;
   }
+}
+
+async function buscarLeadPorCpf(cpf: string): Promise<{ id: number; name: string } | null> {
+  try {
+    const clean = cpf.replace(/\D/g, '');
+    if (clean.length < 11) return null;
+
+    // Tenta via contatos (CPF pode estar em campo customizado do contato)
+    const contData = await kommoGet(
+      `/contacts?query=${encodeURIComponent(clean)}&with=leads&limit=5`
+    ) as { _embedded?: { contacts?: { _embedded?: { leads?: { id: number }[] } }[] } };
+    const contacts = contData?._embedded?.contacts;
+    if (contacts?.length) {
+      const leads = contacts[0]?._embedded?.leads;
+      if (leads?.length) {
+        const leadId = leads[leads.length - 1].id;
+        const lead = await kommoGet(`/leads/${leadId}`) as { id: number; name: string };
+        if (lead) return { id: lead.id, name: lead.name || '' };
+      }
+    }
+
+    // Fallback: busca direto em leads (campo customizado indexado)
+    const data = await kommoGet(
+      `/leads?query=${encodeURIComponent(clean)}&limit=5`
+    ) as { _embedded?: { leads?: { id: number; name: string }[] } };
+    const leads = data?._embedded?.leads;
+    if (!leads?.length) return null;
+    return { id: leads[0].id, name: leads[0].name || '' };
+  } catch {
+    return null;
+  }
+}
+
+async function buscarLeadPorNome(nome: string): Promise<{ id: number; name: string } | null> {
+  const palavras = nome.trim().split(/\s+/).filter(Boolean);
+  // Exige ao menos 2 palavras para evitar falsos positivos
+  if (palavras.length < 2) return null;
+  return buscarLeadGeral(nome.trim());
 }
 
 async function buscarLeadGeral(query: string): Promise<{ id: number; name: string } | null> {
@@ -617,27 +688,88 @@ async function buscarLeadPorRa(ra: string): Promise<{ id: number; name: string }
 }
 
 // ---------------------------------------------------------------------------
+// Helpers — Detecção de instituição pela pipeline
+// ---------------------------------------------------------------------------
+
+/** Retorna 'anhanguera', 'sumare' ou null conforme o nome da pipeline selecionada */
+function detectarInstituicao(pipelineName: string): 'anhanguera' | 'sumare' | null {
+  const n = pipelineName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  if (n.includes('anhanguera') || n.includes('anh')) return 'anhanguera';
+  if (n.includes('sumare') || n.includes('sum')) return 'sumare';
+  return null;
+}
+
+/**
+ * Monta o payload de custom_fields_values para os campos específicos
+ * da instituição (anh_* ou sum_*) a partir dos dados extraídos da planilha.
+ */
+function buildInstituicaoFields(
+  inst: 'anhanguera' | 'sumare',
+  dados: { nome: string; telefone: string; ra: string; cpf: string; curso: string; polo: string; situacao: string },
+  camposKommo: KommoField[],
+): { field_id: number; values: { value: string | number }[] }[] {
+  const prefix = inst === 'anhanguera' ? 'anh_' : 'sum_';
+
+  // Mapeamento: nome do campo Kommo → valor da planilha
+  const mapa: Record<string, string> = {
+    [`${prefix}Nome`]:             dados.nome,
+    [`${prefix}Telefone`]:         dados.telefone,
+    [`${prefix}RA`]:               dados.ra,
+    [`${prefix}CPF`]:              dados.cpf,
+    [`${prefix}Curso`]:            dados.curso,
+    [`${prefix}Polo`]:             dados.polo,
+    [`${prefix}Status Inscrição`]: dados.situacao,
+  };
+
+  const result: { field_id: number; values: { value: string | number }[] }[] = [];
+
+  for (const [nomeKommo, valor] of Object.entries(mapa)) {
+    if (!valor) continue;
+    const campo = camposKommo.find(
+      f => f.name.toLowerCase().trim() === nomeKommo.toLowerCase().trim()
+    );
+    if (!campo) continue;
+    result.push({ field_id: campo.id, values: [{ value: valor }] });
+  }
+
+  return result;
+}
+
+// ---------------------------------------------------------------------------
 // Helpers — Criação de leads não encontrados
 // ---------------------------------------------------------------------------
 
 /** Extrai os campos relevantes de uma linha da planilha para montar o preview e o payload de criação.
- *  Prioridade: coluna Principal → Anhanguera → Sumaré */
+ *  Busca por padrões flexíveis para cobrir planilhas brutas e processadas. */
 function extrairDadosParaCriacao(row: Record<string, unknown>) {
   const str = (v: unknown) => String(v ?? '').trim();
-  const first = (...keys: string[]) => {
-    for (const k of keys) {
-      const v = str(row[k]);
-      if (v) return v;
+
+  // Procura a primeira coluna cujo nome contenha algum dos padrões (case-insensitive)
+  const findByPattern = (patterns: string[]): string => {
+    const keys = Object.keys(row);
+    for (const p of patterns) {
+      const pl = p.toLowerCase();
+      const key = keys.find(k => k.toLowerCase().trim() === pl);
+      if (key) { const v = str(row[key]); if (v) return v; }
+    }
+    for (const p of patterns) {
+      const pl = p.toLowerCase();
+      const key = keys.find(k => k.toLowerCase().includes(pl));
+      if (key) { const v = str(row[key]); if (v) return v; }
     }
     return '';
   };
+
   return {
-    nome:     first('Nome do Lead', 'anh_Nome', 'sum_Nome'),
-    telefone: first('Telefone comercial (contato)', 'anh_Telefone', 'sum_Telefone'),
-    email:    first('anh_Email', 'sum_Email'),
-    ra:       first('RA', 'anh_RA', 'sum_RA'),
-    cpf:      first('CPF', 'anh_CPF', 'sum_CPF'),
-    curso:    first('anh_Curso', 'sum_Curso'),
+    nome:     findByPattern(['nome completo', 'nome do lead', 'anh_nome', 'sum_nome', 'nome', 'name', 'aluno', 'candidato']),
+    telefone: findByPattern(['telefone comercial', 'telefone comercial (contato)', 'anh_telefone', 'sum_telefone', 'telefone', 'celular', 'fone', 'tel', 'phone', 'whatsapp']),
+    email:    findByPattern(['e-mail', 'email', 'anh_email', 'sum_email', 'mail']),
+    ra:       findByPattern(['ra', 'anh_ra', 'sum_ra', 'registro academico', 'registro acadêmico']),
+    cpf:      findByPattern(['cpf', 'anh_cpf', 'sum_cpf', 'c.p.f', 'documento']),
+    curso:    findByPattern(['curso', 'anh_curso', 'sum_curso', 'formação', 'formacao', 'graduacao', 'graduação']),
+    polo:     findByPattern(['polo', 'anh_polo', 'sum_polo', 'unidade', 'campus']),
+    situacao: findByPattern(['situação', 'situacao', 'status', 'anh_situacao', 'sum_situacao', 'anh_status inscrição', 'sum_status inscrição']),
+    origem:   findByPattern(['origem', 'anh_origem', 'sum_origem', 'source', 'canal', 'procedencia']),
   };
 }
 
@@ -876,9 +1008,11 @@ function AtualizarKommoTab() {
   const [akPreview, setAkPreview] = useState<Record<string, string[]>>({});
 
   // Colunas mapeadas por tipo — cada linha usa a primeira que tiver valor
-  const [colunaId,  setColunaId]  = useState('');
-  const [colunaTel, setColunaTel] = useState('');
-  const [colunaRa,  setColunaRa]  = useState('');
+  const [colunaId,   setColunaId]   = useState('');
+  const [colunaTel,  setColunaTel]  = useState('');
+  const [colunaRa,   setColunaRa]   = useState('');
+  const [colunaCpf,  setColunaCpf]  = useState('');
+  const [colunaName, setColunaName] = useState('');
   const [autoDetectado, setAutoDetectado] = useState(false);
   const [mostrarManual, setMostrarManual] = useState(false);
 
@@ -901,6 +1035,9 @@ function AtualizarKommoTab() {
   const [criacaoResults, setCriacaoResults] = useState<CriacaoResult[]>([]);
   // Tag(s) a aplicar em todos os leads atualizados/criados pela planilha (vírgula separa múltiplas)
   const [akTag, setAkTag] = useState('');
+  // Origem fixa a aplicar em todos os leads criados (enum_id como string; '' = usar planilha ou não definir)
+  const [akOrigemEnumId, setAkOrigemEnumId]   = useState('');
+  const [akOrigemEnumVal, setAkOrigemEnumVal] = useState('');
 
   const handleUpload = useCallback(async (file: File) => {
     setLoading(true);
@@ -919,15 +1056,19 @@ function AtualizarKommoTab() {
       setAkPreview(preview);
 
       // Detecta as colunas para cada tipo — independentemente
-      const sugId  = detectarColuna(colunas, PATTERNS_ID)  || '';
-      const sugTel = detectarColuna(colunas, PATTERNS_TEL) || '';
-      const sugRa  = detectarColuna(colunas, PATTERNS_RA)  || '';
+      const sugId   = detectarColuna(colunas, PATTERNS_ID)   || '';
+      const sugTel  = detectarColuna(colunas, PATTERNS_TEL)  || '';
+      const sugRa   = detectarColuna(colunas, PATTERNS_RA)   || '';
+      const sugCpfAk = detectarColuna(colunas, PATTERNS_CPF) || '';
+      const sugName = detectarColuna(colunas, PATTERNS_NOME) || '';
 
       setColunaId(sugId);
       setColunaTel(sugTel);
       setColunaRa(sugRa);
+      setColunaCpf(sugCpfAk);
+      setColunaName(sugName);
 
-      const detectado = !!(sugId || sugTel || sugRa);
+      const detectado = !!(sugId || sugTel || sugRa || sugCpfAk || sugName);
       setAutoDetectado(detectado);
       setMostrarManual(!detectado);
 
@@ -940,8 +1081,8 @@ function AtualizarKommoTab() {
   }, []);
 
   const handleIniciarBusca = useCallback(async () => {
-    if (!colunaId && !colunaTel && !colunaRa) {
-      setError('Configure pelo menos uma coluna de busca (ID, Telefone ou RA).');
+    if (!colunaId && !colunaTel && !colunaRa && !colunaCpf && !colunaName) {
+      setError('Configure pelo menos uma coluna de busca (ID, Telefone, RA, CPF ou Nome).');
       return;
     }
     if (!env.KOMMO_SUBDOMAIN || !env.KOMMO_TOKEN) {
@@ -965,13 +1106,17 @@ function AtualizarKommoTab() {
 
       // Monta lista de tentativas na ordem de prioridade, pulando colunas vazias
       const tentativas: { valor: string; tipo: AkCampoBusca }[] = [];
-      const vId  = colunaId  ? String(row[colunaId]  ?? '').trim() : '';
-      const vTel = colunaTel ? String(row[colunaTel] ?? '').trim() : '';
-      const vRa  = colunaRa  ? String(row[colunaRa]  ?? '').trim() : '';
+      const vId   = colunaId   ? String(row[colunaId]   ?? '').trim() : '';
+      const vTel  = colunaTel  ? String(row[colunaTel]  ?? '').trim() : '';
+      const vRa   = colunaRa   ? String(row[colunaRa]   ?? '').trim() : '';
+      const vCpf  = colunaCpf  ? String(row[colunaCpf]  ?? '').trim() : '';
+      const vName = colunaName ? String(row[colunaName] ?? '').trim() : '';
 
-      if (vId)  tentativas.push({ valor: vId,  tipo: 'id' });
-      if (vTel) tentativas.push({ valor: vTel, tipo: 'telefone' });
-      if (vRa)  tentativas.push({ valor: vRa,  tipo: 'ra' });
+      if (vId)   tentativas.push({ valor: vId,   tipo: 'id' });
+      if (vTel)  tentativas.push({ valor: vTel,  tipo: 'telefone' });
+      if (vRa)   tentativas.push({ valor: vRa,   tipo: 'ra' });
+      if (vCpf)  tentativas.push({ valor: vCpf,  tipo: 'cpf' });
+      if (vName) tentativas.push({ valor: vName, tipo: 'nome' });
 
       if (tentativas.length === 0) {
         results.push({ idx: i, valorBusca: '—', leadId: null, leadNome: '', status: 'nao_encontrado', selecionado: false });
@@ -983,9 +1128,11 @@ function AtualizarKommoTab() {
         let valorUsado = '';
 
         for (const t of tentativas) {
-          if (t.tipo === 'id')       lead = await buscarLeadPorId(t.valor);
+          if (t.tipo === 'id')           lead = await buscarLeadPorId(t.valor);
           else if (t.tipo === 'telefone') lead = await buscarLeadPorTelefone(t.valor);
-          else if (t.tipo === 'ra')  lead = await buscarLeadPorRa(t.valor);
+          else if (t.tipo === 'ra')       lead = await buscarLeadPorRa(t.valor);
+          else if (t.tipo === 'cpf')      lead = await buscarLeadPorCpf(t.valor);
+          else if (t.tipo === 'nome')     lead = await buscarLeadPorNome(t.valor);
 
           if (lead) { valorUsado = `${t.tipo.toUpperCase()}: ${t.valor}`; break; }
         }
@@ -1010,7 +1157,7 @@ function AtualizarKommoTab() {
     setResultados(results);
     setLoading(false);
     setStep('resultado');
-  }, [akData, colunaId, colunaTel, colunaRa]);
+  }, [akData, colunaId, colunaTel, colunaRa, colunaCpf, colunaName]);
 
   const toggleSelecionado = useCallback((idx: number) => {
     setResultados(prev => prev.map(r => r.idx === idx ? { ...r, selecionado: !r.selecionado } : r));
@@ -1023,7 +1170,7 @@ function AtualizarKommoTab() {
   const handleReset = useCallback(() => {
     setStep('upload');
     setAkData([]); setAkColunas([]); setAkFileName(''); setAkPreview({});
-    setColunaId(''); setColunaTel(''); setColunaRa('');
+    setColunaId(''); setColunaTel(''); setColunaRa(''); setColunaCpf(''); setColunaName('');
     setAutoDetectado(false); setMostrarManual(false);
     setResultados([]); setError('');
     setProgress({ atual: 0, total: 0 });
@@ -1033,6 +1180,7 @@ function AtualizarKommoTab() {
     setCriacaoMeta({ pipelineId: '', statusId: '', responsavelId: '' });
     setCriacaoResults([]);
     setAkTag('');
+    setAkOrigemEnumId(''); setAkOrigemEnumVal('');
   }, []);
 
   // ── Criar leads não encontrados ──────────────────────────────────────────
@@ -1053,6 +1201,10 @@ function AtualizarKommoTab() {
     const pipeId = criacaoMeta.pipelineId    ? parseInt(criacaoMeta.pipelineId,    10) : undefined;
     const statId = criacaoMeta.statusId      ? parseInt(criacaoMeta.statusId,      10) : undefined;
     const respId = criacaoMeta.responsavelId ? parseInt(criacaoMeta.responsavelId, 10) : undefined;
+
+    // Detecta instituição pelo nome da pipeline selecionada
+    const pipeNome = kommoPipelines.find(p => String(p.id) === criacaoMeta.pipelineId)?.name ?? '';
+    const instituicao = detectarInstituicao(pipeNome);
 
     // ── Garante campos customizados do Kommo para preencher no lead após criação ──
     let camposKommo = kommoCustomFields;
@@ -1099,8 +1251,10 @@ function AtualizarKommoTab() {
         });
 
         // 2. Preenche campos customizados via PATCH
-        if (autoMapeados.length > 0) {
+        {
           const customFieldsValues: { field_id: number; values: { value: string | number }[] }[] = [];
+
+          // 2a. Campos mapeados manualmente ou por auto-mapeamento de colunas
           for (const cfg of autoMapeados) {
             const rawVal  = row[cfg.coluna] ?? '';
             const textVal = String(rawVal).trim();
@@ -1112,6 +1266,43 @@ function AtualizarKommoTab() {
               customFieldsValues.push({ field_id: cfg.fieldId!, values: [{ value: textVal }] });
             }
           }
+
+          // 2b. Campos específicos da instituição (anh_* ou sum_*) baseados na pipeline
+          if (instituicao) {
+            const instFields = buildInstituicaoFields(instituicao, dados, camposKommo);
+            for (const f of instFields) {
+              if (!customFieldsValues.some(v => v.field_id === f.field_id)) {
+                customFieldsValues.push(f);
+              }
+            }
+
+            // 2c. Campo Origem (select/enum) — prioridade: valor fixo selecionado > coluna da planilha
+            const prefix      = instituicao === 'anhanguera' ? 'anh_' : 'sum_';
+            const origemField = camposKommo.find(
+              f => f.name.toLowerCase().trim() === `${prefix}origem`
+            );
+            if (origemField && !customFieldsValues.some(v => v.field_id === origemField.id)) {
+              // Valor fixo selecionado pelo usuário
+              if (akOrigemEnumId && akOrigemEnumVal) {
+                customFieldsValues.push({
+                  field_id: origemField.id,
+                  values: [{ value: akOrigemEnumVal, enum_id: parseInt(akOrigemEnumId, 10) } as { value: string; enum_id?: number }],
+                });
+              } else if (dados.origem) {
+                // Fallback: tenta casar texto da planilha com um enum do Kommo
+                const matchEnum = origemField.enums?.find(
+                  en => en.value.toLowerCase().trim() === dados.origem.toLowerCase().trim()
+                );
+                if (matchEnum) {
+                  customFieldsValues.push({
+                    field_id: origemField.id,
+                    values: [{ value: matchEnum.value, enum_id: matchEnum.id } as { value: string; enum_id?: number }],
+                  });
+                }
+              }
+            }
+          }
+
           if (customFieldsValues.length > 0) {
             await kommoFetch('/leads', 'PATCH', [{ id: lead.id, custom_fields_values: customFieldsValues }]);
           }
@@ -1139,7 +1330,7 @@ function AtualizarKommoTab() {
 
     setCriacaoResults(results);
     setStep('criacao-resultado');
-  }, [criacaoSelecionados, criacaoMeta, akData, kommoCustomFields, fieldConfigs, akColunas, akTag]);
+  }, [criacaoSelecionados, criacaoMeta, akData, kommoCustomFields, kommoPipelines, fieldConfigs, akColunas, akTag, akOrigemEnumId, akOrigemEnumVal]);
 
   // ── Entrar no passo "campos": busca metadados do Kommo e auto-mapeia colunas ──
   const handleEntrarCampos = useCallback(async () => {
@@ -1422,7 +1613,7 @@ function AtualizarKommoTab() {
 
   // ── Step: mapeamento ──────────────────────────────────────────────────────
   if (step === 'mapeamento') {
-    const temAlguma = !!(colunaId || colunaTel || colunaRa);
+    const temAlguma = !!(colunaId || colunaTel || colunaRa || colunaCpf || colunaName);
 
     // Mini-componente para cada linha de coluna detectada
     const ColunaBadge = ({
@@ -1479,7 +1670,7 @@ function AtualizarKommoTab() {
             <div>
               <span className="text-white font-semibold">Colunas de busca detectadas</span>
               <p className="text-xs text-slate-500 mt-0.5">
-                Cada linha usa a primeira coluna que tiver valor — na ordem: ID → Telefone → RA
+                Cada linha usa a primeira coluna que tiver valor — na ordem: ID → Telefone → RA → CPF → Nome
               </p>
             </div>
             {autoDetectado ? (
@@ -1494,25 +1685,38 @@ function AtualizarKommoTab() {
           </div>
 
           <div className="p-6 space-y-5">
-            {/* Três colunas em ordem de prioridade */}
+            {/* Cinco colunas em ordem de prioridade */}
             <div className="space-y-2">
               <p className="text-xs text-slate-500 uppercase tracking-wider font-semibold mb-3">Ordem de prioridade por linha:</p>
+
               <div className="flex items-center gap-2 text-xs text-slate-600 mb-1 px-3">
                 <span className="w-5 h-5 rounded-full bg-blue-500/20 text-blue-400 font-bold flex items-center justify-center shrink-0">1</span>
               </div>
-              <ColunaBadge label="ID do Lead" cor="text-blue-400"   coluna={colunaId}  setColuna={setColunaId} />
+              <ColunaBadge label="ID do Lead"   cor="text-blue-400"   coluna={colunaId}   setColuna={setColunaId} />
+
               <div className="flex items-center gap-2 text-xs text-slate-600 px-3">
                 <span className="w-5 h-5 rounded-full bg-purple-500/20 text-purple-400 font-bold flex items-center justify-center shrink-0">2</span>
               </div>
-              <ColunaBadge label="Telefone"   cor="text-purple-400" coluna={colunaTel} setColuna={setColunaTel} />
+              <ColunaBadge label="Telefone"     cor="text-purple-400" coluna={colunaTel}  setColuna={setColunaTel} />
+
               <div className="flex items-center gap-2 text-xs text-slate-600 px-3">
                 <span className="w-5 h-5 rounded-full bg-amber-500/20 text-amber-400 font-bold flex items-center justify-center shrink-0">3</span>
               </div>
-              <ColunaBadge label="RA / Matríc." cor="text-amber-400" coluna={colunaRa} setColuna={setColunaRa} />
+              <ColunaBadge label="RA / Matríc." cor="text-amber-400"  coluna={colunaRa}   setColuna={setColunaRa} />
+
+              <div className="flex items-center gap-2 text-xs text-slate-600 px-3">
+                <span className="w-5 h-5 rounded-full bg-emerald-500/20 text-emerald-400 font-bold flex items-center justify-center shrink-0">4</span>
+              </div>
+              <ColunaBadge label="CPF"          cor="text-emerald-400" coluna={colunaCpf}  setColuna={setColunaCpf} />
+
+              <div className="flex items-center gap-2 text-xs text-slate-600 px-3">
+                <span className="w-5 h-5 rounded-full bg-rose-500/20 text-rose-400 font-bold flex items-center justify-center shrink-0">5</span>
+              </div>
+              <ColunaBadge label="Nome (fallback)" cor="text-rose-400" coluna={colunaName} setColuna={setColunaName} />
             </div>
 
             <p className="text-xs text-slate-600 italic px-1">
-              * Se todos os três estiverem vazios para uma linha, ela será marcada como "não encontrada".
+              * Cada linha usa a primeira coluna com valor disponível. Nome é usado como último recurso (pode ter falsos positivos).
             </p>
 
             {/* Botão principal */}
@@ -2239,6 +2443,32 @@ function AtualizarKommoTab() {
           </div>
         </div>
 
+        {/* Indicador de instituição detectada */}
+        {(() => {
+          const pNome = kommoPipelines.find(p => String(p.id) === criacaoMeta.pipelineId)?.name ?? '';
+          const inst  = detectarInstituicao(pNome);
+          if (!inst) return null;
+          const isAnh = inst === 'anhanguera';
+          return (
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-xl border ${
+              isAnh
+                ? 'bg-blue-500/10 border-blue-500/30 text-blue-300'
+                : 'bg-purple-500/10 border-purple-500/30 text-purple-300'
+            }`}>
+              <CheckCircle className="w-4 h-4 shrink-0" />
+              <p className="text-sm">
+                Pipeline <strong>{pNome}</strong> detectada como{' '}
+                <strong>{isAnh ? 'Anhanguera' : 'Sumaré'}</strong> — os campos{' '}
+                <code className="text-xs px-1 py-0.5 rounded bg-white/10">
+                  {isAnh ? 'anh_Nome, anh_Telefone, anh_CPF, anh_RA, anh_Curso, anh_Polo, anh_Status Inscrição'
+                         : 'sum_Nome, sum_Telefone, sum_CPF, sum_RA, sum_Curso, sum_Polo, sum_Status Inscrição'}
+                </code>{' '}
+                serão preenchidos automaticamente.
+              </p>
+            </div>
+          );
+        })()}
+
         {/* Metadados opcionais para os novos leads */}
         <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
           <div className="px-5 py-4 border-b border-white/[0.06]">
@@ -2301,6 +2531,69 @@ function AtualizarKommoTab() {
               <p className="text-xs text-amber-400">Erro ao carregar metadados: {metaError} — os campos acima ficarão vazios, mas a criação ainda funcionará com os padrões da conta.</p>
             </div>
           )}
+          {/* Origem (campo select da instituição) */}
+          {(() => {
+            const pNome    = kommoPipelines.find(p => String(p.id) === criacaoMeta.pipelineId)?.name ?? '';
+            const inst     = detectarInstituicao(pNome);
+            if (!inst) return null;
+            const prefix   = inst === 'anhanguera' ? 'anh_' : 'sum_';
+            const origemKommo = kommoCustomFields.find(
+              f => f.name.toLowerCase().trim() === `${prefix}origem`
+            );
+            if (!origemKommo?.enums?.length && !metaLoading) return null;
+
+            // Verifica se alguma linha da planilha tem coluna de origem preenchida
+            const temOrigemNaPlanilha = akData.some(r => {
+              const v = extrairDadosParaCriacao(r as Record<string, unknown>).origem;
+              return !!v;
+            });
+
+            return (
+              <div className="px-5 pb-4 border-t border-white/[0.05] pt-4 space-y-2">
+                <label className="flex items-center gap-2 text-xs font-semibold text-slate-400">
+                  <GitBranch className="w-3.5 h-3.5 text-orange-400" />
+                  <span>Origem — <code className="text-orange-300 font-mono">{prefix}Origem</code></span>
+                  <span className="font-normal text-slate-500">(aplicada em todos os {indices.length} leads)</span>
+                </label>
+
+                {temOrigemNaPlanilha && (
+                  <div className="flex items-center gap-2 text-xs text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+                    <CheckCircle className="w-3.5 h-3.5 shrink-0" />
+                    Coluna de Origem detectada na planilha — será usada por padrão.
+                    Selecione abaixo para sobrescrever com um valor fixo.
+                  </div>
+                )}
+
+                {metaLoading ? (
+                  <div className="h-9 rounded-lg bg-white/[0.04] animate-pulse" />
+                ) : (
+                  <select
+                    value={akOrigemEnumId}
+                    onChange={e => {
+                      const chosen = origemKommo?.enums?.find(en => String(en.id) === e.target.value);
+                      setAkOrigemEnumId(e.target.value);
+                      setAkOrigemEnumVal(chosen?.value ?? '');
+                    }}
+                    className="w-full px-3 py-2 bg-[#0d1117] border border-white/[0.08] rounded-lg text-sm text-white [color-scheme:dark] focus:outline-none focus:ring-1 focus:ring-orange-500"
+                  >
+                    <option value="">
+                      {temOrigemNaPlanilha ? '— Usar coluna da planilha —' : '— Não definir Origem —'}
+                    </option>
+                    {(origemKommo?.enums ?? []).map(en => (
+                      <option key={en.id} value={String(en.id)}>{en.value}</option>
+                    ))}
+                  </select>
+                )}
+
+                {akOrigemEnumVal && (
+                  <p className="text-xs text-orange-300">
+                    Todos os leads serão criados com origem: <strong>{akOrigemEnumVal}</strong>
+                  </p>
+                )}
+              </div>
+            );
+          })()}
+
           {/* Tag opcional */}
           <div className="px-5 pb-4 space-y-1.5">
             <label className="flex items-center gap-2 text-xs font-semibold text-slate-400">
@@ -2331,9 +2624,10 @@ function AtualizarKommoTab() {
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">#</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Nome</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Telefone</th>
-                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">E-mail</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">RA / CPF</th>
                   <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Curso</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Polo</th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-slate-500">Situação</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/[0.04]">
@@ -2344,11 +2638,12 @@ function AtualizarKommoTab() {
                       <td className="px-4 py-2.5 text-xs text-slate-600">{i + 1}</td>
                       <td className="px-4 py-2.5 text-sm text-white font-medium max-w-[160px] truncate">{dados.nome || <span className="italic text-slate-500">sem nome</span>}</td>
                       <td className="px-4 py-2.5 text-xs font-mono text-slate-300">{dados.telefone || <span className="text-slate-600">—</span>}</td>
-                      <td className="px-4 py-2.5 text-xs text-slate-300 max-w-[160px] truncate">{dados.email || <span className="text-slate-600">—</span>}</td>
                       <td className="px-4 py-2.5 text-xs font-mono text-slate-300">
                         {dados.ra ? `RA: ${dados.ra}` : dados.cpf ? `CPF: ${dados.cpf}` : <span className="text-slate-600">—</span>}
                       </td>
                       <td className="px-4 py-2.5 text-xs text-slate-300 max-w-[120px] truncate">{dados.curso || <span className="text-slate-600">—</span>}</td>
+                      <td className="px-4 py-2.5 text-xs text-slate-300 max-w-[100px] truncate">{dados.polo || <span className="text-slate-600">—</span>}</td>
+                      <td className="px-4 py-2.5 text-xs text-slate-300">{dados.situacao || <span className="text-slate-600">—</span>}</td>
                     </tr>
                   );
                 })}
