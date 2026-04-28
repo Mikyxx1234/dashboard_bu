@@ -1,0 +1,50 @@
+server {
+    listen 80;
+    server_name localhost;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    gzip on;
+    gzip_vary on;
+    gzip_min_length 1024;
+    gzip_proxied expired no-cache no-store private auth;
+    gzip_types text/plain text/css text/xml text/javascript application/x-javascript application/xml application/javascript;
+
+    # index.html and env-config.js must never be cached
+    location = /index.html {
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+    }
+
+    location = /env-config.js {
+        add_header Cache-Control "no-store, no-cache, must-revalidate";
+    }
+
+    # Proxy for Kommo API — subdomain is injected at runtime via entrypoint.sh
+    location /kommo-api/ {
+        resolver 8.8.8.8 valid=30s;
+        set $kommo https://${KOMMO_SUBDOMAIN}.kommo.com;
+        rewrite ^/kommo-api/(.*) /$1 break;
+        proxy_pass $kommo;
+        proxy_ssl_server_name on;
+        proxy_set_header Host ${KOMMO_SUBDOMAIN}.kommo.com;
+        proxy_set_header Accept application/json;
+        proxy_set_header Authorization "";
+    }
+
+    # SPA routing
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # Cache Vite hashed assets (filenames change on rebuild)
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # Cache other static files
+    location ~* \.(png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}

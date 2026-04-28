@@ -478,12 +478,11 @@ function baseRowsToWorkbook(rows: BaseRow[]): XLSX.WorkBook {
 // ---------------------------------------------------------------------------
 // Kommo API helpers
 // ---------------------------------------------------------------------------
-// Em dev usa o proxy Vite (/kommo-api → academicosoead.kommo.com) para evitar CORS.
-// Em produção usa a URL direta (necessita proxy nginx ou similar configurado).
+// Sempre usa o proxy relativo /kommo-api/ para evitar CORS.
+// Em dev: Vite proxy (/kommo-api → subdomain.kommo.com)
+// Em prod: nginx proxy (/kommo-api/ → subdomain.kommo.com)
 function kommoBase(): string {
-  return import.meta.env.DEV
-    ? '/kommo-api/api/v4'
-    : `https://${env.KOMMO_SUBDOMAIN}.kommo.com/api/v4`;
+  return '/kommo-api/api/v4';
 }
 
 function kommoHeaders() {
