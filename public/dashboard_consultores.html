@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard Individual de Consultores</title>
+  <script src="/env-config.js" onerror="window.__env__=window.__env__||{}"></script>
   <style>
     :root {
       --bg: #0b1020;
@@ -1395,11 +1396,7 @@
             <input type="text" id="cadResponsavelDisplay" readonly
               style="background:rgba(255,255,255,0.02);color:var(--muted);cursor:default;">
             <select id="cadResponsavelSelect" style="display:none">
-              <option value="" disabled selected>Selecione o consultor</option>
-              <option value="14774452">Camilla</option>
-              <option value="14774444">Rahi</option>
-              <option value="14774008">Gabriel</option>
-              <option value="15025792">Gabriel Messias</option>
+              <option value="" disabled selected>Carregando consultores...</option>
             </select>
           </div>
 
@@ -1447,6 +1444,26 @@
     const WEBHOOK_URL = 'https://n8n-new-n8n.ca31ey.easypanel.host/webhook/dashboard_individual_bu';
     const SESSION_KEY = 'dashboard_consultor_auth';
     const FETCH_TIMEOUT_MS = 20000;
+
+    // Cache de usuários do Kommo (carregado uma vez e reutilizado)
+    let _kommoUsersCache = null;
+
+    async function fetchAllKommoUsers() {
+      if (_kommoUsersCache) return _kommoUsersCache;
+      try {
+        var token = ((window.__env__ || {}).KOMMO_TOKEN) || '';
+        if (!token) return [];
+        var res = await fetch('/kommo-api/api/v4/users?limit=250', {
+          headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+        });
+        if (!res.ok) return [];
+        var data = await res.json();
+        _kommoUsersCache = (data && data._embedded && data._embedded.users || [])
+          .map(function(u) { return { id: String(u.id), name: u.name || '' }; })
+          .sort(function(a, b) { return a.name.localeCompare(b.name, 'pt-BR'); });
+        return _kommoUsersCache;
+      } catch(e) { return []; }
+    }
 
     const _params = new URLSearchParams(window.location.search);
     const SUPABASE_URL = _params.get('sbUrl') || '';
@@ -2450,13 +2467,53 @@
       var display = document.getElementById('cadResponsavelDisplay');
       var hiddenVal = document.getElementById('cadResponsavelValue');
 
-      var CONSULTOR_IDS = {
+      // Fallback estático para quando a API não responder
+      var CONSULTOR_IDS_FALLBACK = {
         'camilla': '14774452',
         'rahi': '14774444',
         'gabriel': '14774008',
         'gabriel messias': '15025792'
       };
 
+      // Carrega lista completa do Kommo e popula o select
+      fetchAllKommoUsers().then(function(users) {
+        if (sel) {
+          // Reconstrói as opções com todos os usuários do Kommo
+          sel.innerHTML = '<option value="" disabled selected>Selecione o consultor</option>';
+          users.forEach(function(u) {
+            var opt = document.createElement('option');
+            opt.value = u.id;
+            opt.textContent = u.name;
+            sel.appendChild(opt);
+          });
+
+          // Monta mapa dinâmico nome→id a partir da lista do Kommo
+          var dynamicIds = {};
+          users.forEach(function(u) {
+            dynamicIds[u.name.toLowerCase().trim()] = u.id;
+          });
+          // Faz merge com o fallback (fallback tem prioridade menor)
+          var CONSULTOR_IDS = Object.assign({}, CONSULTOR_IDS_FALLBACK, dynamicIds);
+
+          if (state.isAdmin) {
+            if (display) display.style.display = 'none';
+            if (sel) { sel.style.display = ''; sel.value = ''; }
+            if (hiddenVal) hiddenVal.value = '';
+            sel.onchange = function() { if (hiddenVal) hiddenVal.value = sel.value; };
+          } else {
+            if (sel) sel.style.display = 'none';
+            if (display) {
+              display.style.display = '';
+              display.value = state.authenticatedConsultant || '';
+            }
+            var userName = (state.authenticatedConsultant || '').toLowerCase().trim();
+            var id = CONSULTOR_IDS[userName] || '';
+            if (hiddenVal) hiddenVal.value = id;
+          }
+        }
+      });
+
+      // Enquanto carrega, exibe select vazio mas funcional para admin
       if (state.isAdmin) {
         if (display) display.style.display = 'none';
         if (sel) { sel.style.display = ''; sel.value = ''; }
@@ -2469,8 +2526,8 @@
           display.value = state.authenticatedConsultant || '';
         }
         var userName = (state.authenticatedConsultant || '').toLowerCase().trim();
-        var id = CONSULTOR_IDS[userName] || '';
-        if (hiddenVal) hiddenVal.value = id;
+        var idFallback = CONSULTOR_IDS_FALLBACK[userName] || '';
+        if (hiddenVal) hiddenVal.value = idFallback;
       }
     }
 
