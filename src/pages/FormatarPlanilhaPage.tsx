@@ -372,16 +372,17 @@ function detectarColuna(colunas: string[], patterns: string[]): string | null {
   const colunasLower: Record<string, string> = {};
   for (const c of colunas) colunasLower[String(c).toLowerCase().trim()] = c;
 
-  for (const [, lower] of Object.entries(colunasLower)) {
-    const lowerKey = lower.toLowerCase().trim();
-    for (const p of patterns) {
-      if (lowerKey === p) return lower;
+  // Itera padrões primeiro (padrão mais específico tem prioridade sobre ordem das colunas)
+  // Passagem 1: match exato
+  for (const p of patterns) {
+    for (const [key, original] of Object.entries(colunasLower)) {
+      if (key === p) return original;
     }
   }
-  for (const [, lower] of Object.entries(colunasLower)) {
-    const lowerKey = lower.toLowerCase().trim();
-    for (const p of patterns) {
-      if (lowerKey.includes(p)) return lower;
+  // Passagem 2: match parcial (includes)
+  for (const p of patterns) {
+    for (const [key, original] of Object.entries(colunasLower)) {
+      if (key.includes(p)) return original;
     }
   }
   return null;
@@ -663,24 +664,28 @@ async function buscarLeadGeral(query: string): Promise<{ id: number; name: strin
   }
 }
 
-// Busca por RA via campo customizado (procura o valor em todos os leads)
+// Busca por RA via campo customizado — exige match exato para evitar falsos positivos
 async function buscarLeadPorRa(ra: string): Promise<{ id: number; name: string } | null> {
   try {
-    // Tenta primeiro como query geral (o Kommo indexa campos customizados)
+    const raClean = ra.trim();
+    if (!raClean) return null;
+
     const data = await kommoGet(
-      `/leads?query=${encodeURIComponent(ra.trim())}&limit=5`
+      `/leads?query=${encodeURIComponent(raClean)}&limit=10`
     ) as { _embedded?: { leads?: { id: number; name: string; custom_fields_values?: { field_name: string; values: { value: unknown }[] }[] }[] } };
     const leads = data?._embedded?.leads;
     if (!leads?.length) return null;
-    // Prefere o lead que tiver o RA exatamente em um campo customizado
-    const raLower = ra.trim().toLowerCase();
+
+    // Só retorna se o RA estiver EXATAMENTE em um campo customizado do lead
+    // (evita falsos positivos onde um número curto bate em qualquer lead)
+    const raLower = raClean.toLowerCase();
     const exact = leads.find(l =>
       l.custom_fields_values?.some(cf =>
-        cf.values?.some(v => String(v.value).toLowerCase() === raLower)
+        cf.values?.some(v => String(v.value).trim().toLowerCase() === raLower)
       )
     );
-    const found = exact ?? leads[0];
-    return { id: found.id, name: found.name || '' };
+    if (!exact) return null;
+    return { id: exact.id, name: exact.name || '' };
   } catch {
     return null;
   }
