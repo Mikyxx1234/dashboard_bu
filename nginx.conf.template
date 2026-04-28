@@ -28,7 +28,7 @@ server {
         proxy_ssl_server_name on;
         proxy_set_header Host ${KOMMO_SUBDOMAIN}.kommo.com;
         proxy_set_header Accept application/json;
-        proxy_set_header Authorization "";
+        proxy_pass_request_headers on;
     }
 
     # SPA routing
