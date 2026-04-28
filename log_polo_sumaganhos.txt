@@ -1,0 +1,74 @@
+Atualizados: 19 | Sem polo: 53 | Erros: 0
+
+SEM_POLO | id=5 | id_lead=23450131 | fonte=vazio
+SEM_POLO | id=7 | id_lead=23450131 | fonte=vazio
+SEM_POLO | id=44 | id_lead=23445699 | fonte=nao_encontrado
+SEM_POLO | id=47 | id_lead=23451143 | fonte=vazio
+SEM_POLO | id=49 | id_lead=23453485 | fonte=vazio
+SEM_POLO | id=51 | id_lead=23462241 | fonte=vazio
+SEM_POLO | id=52 | id_lead=23473169 | fonte=vazio
+SEM_POLO | id=4 | id_lead=23452197 | fonte=nao_encontrado
+SEM_POLO | id=8 | id_lead=23452489 | fonte=nao_encontrado
+SEM_POLO | id=9 | id_lead=23452475 | fonte=nao_encontrado
+SEM_POLO | id=10 | id_lead=23452511 | fonte=nao_encontrado
+SEM_POLO | id=11 | id_lead=23452481 | fonte=nao_encontrado
+SEM_POLO | id=12 | id_lead=23452491 | fonte=nao_encontrado
+SEM_POLO | id=13 | id_lead=23452533 | fonte=nao_encontrado
+SEM_POLO | id=14 | id_lead=23452553 | fonte=nao_encontrado
+SEM_POLO | id=15 | id_lead=23452483 | fonte=nao_encontrado
+SEM_POLO | id=16 | id_lead=23452521 | fonte=nao_encontrado
+SEM_POLO | id=17 | id_lead=23452535 | fonte=nao_encontrado
+SEM_POLO | id=18 | id_lead=23452505 | fonte=nao_encontrado
+SEM_POLO | id=19 | id_lead=23452575 | fonte=nao_encontrado
+SEM_POLO | id=20 | id_lead=23452523 | fonte=nao_encontrado
+SEM_POLO | id=21 | id_lead=23452485 | fonte=nao_encontrado
+SEM_POLO | id=22 | id_lead=23452543 | fonte=nao_encontrado
+SEM_POLO | id=23 | id_lead=23452507 | fonte=nao_encontrado
+SEM_POLO | id=24 | id_lead=23452473 | fonte=nao_encontrado
+SEM_POLO | id=25 | id_lead=23452569 | fonte=nao_encontrado
+SEM_POLO | id=26 | id_lead=23452487 | fonte=nao_encontrado
+SEM_POLO | id=27 | id_lead=23452525 | fonte=nao_encontrado
+SEM_POLO | id=28 | id_lead=23452561 | fonte=nao_encontrado
+SEM_POLO | id=525 | id_lead=23457823 | fonte=nao_encontrado
+SEM_POLO | id=291 | id_lead=23499483 | fonte=vazio
+SEM_POLO | id=296 | id_lead=23462101 | fonte=vazio
+SEM_POLO | id=305 | id_lead=23482743 | fonte=vazio
+SEM_POLO | id=363 | id_lead=23473815 | fonte=vazio
+SEM_POLO | id=378 | id_lead=23491613 | fonte=vazio
+SEM_POLO | id=29 | id_lead=23452545 | fonte=nao_encontrado
+SEM_POLO | id=30 | id_lead=23452509 | fonte=nao_encontrado
+SEM_POLO | id=31 | id_lead=23452577 | fonte=nao_encontrado
+SEM_POLO | id=33 | id_lead=23452527 | fonte=nao_encontrado
+SEM_POLO | id=34 | id_lead=23452563 | fonte=nao_encontrado
+SEM_POLO | id=35 | id_lead=23452551 | fonte=nao_encontrado
+SEM_POLO | id=38 | id_lead=23452565 | fonte=nao_encontrado
+SEM_POLO | id=39 | id_lead=23452589 | fonte=nao_encontrado
+SEM_POLO | id=40 | id_lead=23453037 | fonte=nao_encontrado
+SEM_POLO | id=41 | id_lead=23453039 | fonte=nao_encontrado
+SEM_POLO | id=42 | id_lead=23453031 | fonte=nao_encontrado
+SEM_POLO | id=36 | id_lead=23452587 | fonte=nao_encontrado
+SEM_POLO | id=522 | id_lead=23486389 | fonte=vazio
+SEM_POLO | id=564 | id_lead=23604085 | fonte=nao_encontrado
+SEM_POLO | id=571 | id_lead=23604079 | fonte=vazio
+SEM_POLO | id=575 | id_lead=23604087 | fonte=vazio
+SEM_POLO | id=597 | id_lead=23574517 | fonte=vazio
+SEM_POLO | id=374 | id_lead=23470271 | fonte=vazio
+OK       | id=725 | id_lead=23672267 | polo=Barra Funda | [sum_Polo]
+OK       | id=726 | id_lead=23724951 | polo=Santo Amaro | [sum_Polo]
+OK       | id=727 | id_lead=23732871 | polo=Barra Funda | [sum_Polo]
+OK       | id=728 | id_lead=23731327 | polo=Barra Funda | [sum_Polo]
+OK       | id=729 | id_lead=23714311 | polo=Barra Funda | [sum_Polo]
+OK       | id=730 | id_lead=23725347 | polo=Barra Funda | [sum_Polo]
+OK       | id=731 | id_lead=23735727 | polo=Barra Funda | [sum_Polo]
+OK       | id=732 | id_lead=23703561 | polo=Santo Amaro | [sum_Polo]
+OK       | id=733 | id_lead=23735727 | polo=Barra Funda | [sum_Polo]
+OK       | id=734 | id_lead=23740513 | polo=Barra Funda | [sum_Polo]
+OK       | id=735 | id_lead=23714313 | polo=barra funda | [sum_Polo]
+OK       | id=736 | id_lead=23724713 | polo=Barra Funda | [sum_Polo]
+OK       | id=737 | id_lead=23724953 | polo=Santo Amaro | [sum_Polo]
+OK       | id=738 | id_lead=23684814 | polo=Santo Amaro | [sum_Polo]
+OK       | id=740 | id_lead=23472273 | polo=Barra Funda | [sum_Polo]
+OK       | id=741 | id_lead=23742833 | polo=Barra funda | [sum_Polo]
+OK       | id=739 | id_lead=23591425 | polo=Tatuapé | [sum_Polo]
+OK       | id=742 | id_lead=23683705 | polo=Barra Funda | [sum_Polo]
+OK       | id=743 | id_lead=23739161 | polo=FS_SP_O1 | [sum_Polo]
