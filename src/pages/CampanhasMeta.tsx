@@ -33,7 +33,9 @@ interface ConsultantData {
 }
 
 interface GanhosItem {
-  nome: string;
+  nome?: string;
+  consultor?: string;
+  nome_consultor?: string;
   bandeira: string;
   ganhos: number;
   perdidos: number;
@@ -203,9 +205,16 @@ export function CampanhasMeta() {
 
   const consultantPerformance = (() => {
     if (filteredGanhosData.length > 0) {
-      return filteredGanhosData
-        .map((d) => ({ name: d.nome || '—', ganhos: Number(d.ganhos) || 0, perdidos: Number(d.perdidos) || 0 }))
-        .filter((d) => d.name !== '—' || d.ganhos > 0)
+      const map = new Map<string, { name: string; ganhos: number; perdidos: number }>();
+      filteredGanhosData.forEach((d) => {
+        const name = d.consultor || d.nome || d.nome_consultor || '';
+        if (!name) return;
+        const existing = map.get(name) || { name, ganhos: 0, perdidos: 0 };
+        existing.ganhos += Number(d.ganhos) || 0;
+        existing.perdidos += Number(d.perdidos) || 0;
+        map.set(name, existing);
+      });
+      return Array.from(map.values())
         .sort((a, b) => b.ganhos - a.ganhos)
         .slice(0, 8);
     }
@@ -407,24 +416,41 @@ export function CampanhasMeta() {
 
               <div className="rounded-xl border border-white/[0.07] bg-[#161b22] p-6" style={{ backdropFilter: 'blur(24px)' }}>
                 <h3 className="mb-4 text-lg font-semibold text-slate-100">Performance por Consultor</h3>
-                <div className="h-72">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={consultantPerformance} layout="vertical">
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.06)" />
-                      <XAxis type="number" tick={{ fontSize: 12, fill: '#94a3b8' }} stroke="#64748b" />
-                      <YAxis
-                        dataKey="name"
-                        type="category"
-                        tick={{ fontSize: 11, fill: '#94a3b8' }}
-                        stroke="#64748b"
-                        width={80}
-                      />
-                      <Tooltip contentStyle={darkTooltipStyle} />
-                      <Legend wrapperStyle={{ color: '#94a3b8' }} />
-                      <Bar dataKey="ganhos" name="Ganhos" fill={COLORS.ganho} radius={[0, 4, 4, 0]} />
-                      <Bar dataKey="perdidos" name="Perdidos" fill={COLORS.perdido} radius={[0, 4, 4, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
+                <div className="space-y-3">
+                  {(() => {
+                    const maxVal = Math.max(...consultantPerformance.map(d => Math.max(d.ganhos, d.perdidos)), 1);
+                    return consultantPerformance.map((item) => (
+                      <div key={item.name} className="flex items-center gap-3">
+                        <div className="w-44 shrink-0 text-right text-sm font-medium text-slate-100 truncate" title={item.name}>
+                          {item.name}
+                        </div>
+                        <div className="flex flex-1 flex-col gap-1">
+                          <div className="flex items-center gap-1">
+                            <div
+                              className="h-3 rounded-r-sm bg-emerald-500 transition-all"
+                              style={{ width: `${(item.ganhos / maxVal) * 100}%`, minWidth: item.ganhos > 0 ? 4 : 0 }}
+                            />
+                            <span className="text-[10px] text-slate-400">{item.ganhos}</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div
+                              className="h-3 rounded-r-sm bg-red-500 transition-all"
+                              style={{ width: `${(item.perdidos / maxVal) * 100}%`, minWidth: item.perdidos > 0 ? 4 : 0 }}
+                            />
+                            <span className="text-[10px] text-slate-400">{item.perdidos}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ));
+                  })()}
+                  <div className="flex items-center gap-4 pt-2">
+                    <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <span className="inline-block h-2.5 w-2.5 rounded-sm bg-emerald-500" />Ganhos
+                    </span>
+                    <span className="flex items-center gap-1.5 text-xs text-slate-400">
+                      <span className="inline-block h-2.5 w-2.5 rounded-sm bg-red-500" />Perdidos
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>
