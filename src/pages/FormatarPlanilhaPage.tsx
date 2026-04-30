@@ -178,7 +178,7 @@ interface FieldConfig {
   fieldType?: string;
   enums?: KommoFieldEnum[];          // opções do campo, quando for select
   enabled: boolean;
-  fonte: 'coluna' | 'fixo' | 'enum';
+  fonte: 'coluna' | 'fixo' | 'enum' | 'coluna-enum';
   coluna: string;
   valorFixo: string;
   valorId: string;    // user_id, "pipelineId:statusId", ou String(enum.id)
@@ -190,6 +190,41 @@ interface AkUpdateResult {
   leadNome: string;
   status: 'ok' | 'erro';
   erro?: string;
+}
+
+// ---------------------------------------------------------------------------
+// Colaborar — mapeamento fixo de campos
+// ---------------------------------------------------------------------------
+const COLABORAR_FIELD_MAP: { fieldId: number; coluna: string; fonte: 'coluna' | 'coluna-enum' }[] = [
+  // Campos Principal
+  { fieldId: 1473849, coluna: 'Nome Completo',     fonte: 'coluna' },   // Nome
+  { fieldId: 1473851, coluna: 'Telefone Comercial',fonte: 'coluna' },   // Telefone
+  { fieldId: 412930,  coluna: 'CPF',               fonte: 'coluna' },   // CPF
+  { fieldId: 412928,  coluna: 'RA',                fonte: 'coluna' },   // RA
+  { fieldId: 412932,  coluna: 'Curso',             fonte: 'coluna' },   // Curso
+  { fieldId: 412934,  coluna: 'Polo',              fonte: 'coluna' },   // Polo
+  // Campos Anhanguera (anh_*)
+  { fieldId: 1475385, coluna: 'Nome Completo',     fonte: 'coluna' },   // anh_Nome
+  { fieldId: 1475387, coluna: 'CPF',               fonte: 'coluna' },   // anh_CPF
+  { fieldId: 1475389, coluna: 'Telefone Comercial',fonte: 'coluna' },   // anh_Telefone
+  { fieldId: 1475413, coluna: 'RA',                fonte: 'coluna' },   // anh_RA
+  { fieldId: 1475403, coluna: 'Curso',             fonte: 'coluna' },   // anh_Curso
+  { fieldId: 1475405, coluna: 'Polo',              fonte: 'coluna' },   // anh_Polo
+  { fieldId: 1475429, coluna: 'Formação',          fonte: 'coluna-enum' }, // anh_Nivel (select)
+  { fieldId: 1475407, coluna: 'Situação',          fonte: 'coluna' },   // anh_Status Inscrição
+  { fieldId: 1475399, coluna: 'Inscrição',         fonte: 'coluna' },   // anh_Data Inscricao
+  { fieldId: 1475401, coluna: 'Matrícula',         fonte: 'coluna' },   // anh_Data Matricula
+  { fieldId: 1475485, coluna: 'PTC',               fonte: 'coluna' },   // anh_PTC
+];
+
+// Colaborar — lógica de pipeline/status por lead baseada na Situação
+const COLABORAR_RESPONSAVEL_ID = 11616068; // Supervisão
+const COLABORAR_ANH_ORIGEM = { fieldId: 1475415, enumId: 1193765, enumValue: 'Colaborar' }; // anh_Origem = Colaborar
+function colaborarPipelineParaLead(situacao: string): { pipelineId: number; statusId: number } {
+  if (situacao.trim().toLowerCase() === 'matriculado') {
+    return { pipelineId: 7355323, statusId: 60877039 }; // BASE DE ALUNOS - ANHANGUERA / CALOURO
+  }
+  return { pipelineId: 13080164, statusId: 100860024 }; // ANHANGUERA - COMERCIAL / ROBO
 }
 
 interface CriacaoResult {
@@ -1042,6 +1077,9 @@ function AtualizarKommoTab() {
   // Origem fixa a aplicar em todos os leads criados (enum_id como string; '' = usar planilha ou não definir)
   const [akOrigemEnumId, setAkOrigemEnumId]   = useState('');
   const [akOrigemEnumVal, setAkOrigemEnumVal] = useState('');
+  // Tipo de planilha selecionada (define regras específicas de preenchimento)
+  type AkTipoPlanilha = 'padrao' | 'colaborar' | 'rematricula' | 'inadimplente';
+  const [akTipoPlanilha, setAkTipoPlanilha] = useState<AkTipoPlanilha>('padrao');
 
   const handleUpload = useCallback(async (file: File) => {
     setLoading(true);
@@ -1217,25 +1255,47 @@ function AtualizarKommoTab() {
       catch { /* prossegue sem campos */ }
     }
 
+    // Prioridade 0 (Colaborar): constrói mapeamento fixo direto do COLABORAR_FIELD_MAP
     // Prioridade 1: usa fieldConfigs já habilitados pelo usuário (passo "campos")
     // Prioridade 2: auto-mapeia por nome de coluna = nome do campo Kommo
     const enabledCustom = fieldConfigs.filter(c => c.enabled && c.kind === 'custom' && !!c.fieldId && c.coluna);
-    const autoMapeados: FieldConfig[] = enabledCustom.length > 0
-      ? enabledCustom
-      : camposKommo
-          .filter(f => !fieldIsSelect(f))
-          .flatMap(f => {
-            const col = akColunas.find(c => c.toLowerCase().trim() === f.name.toLowerCase().trim());
-            if (!col) return [];
-            const temDado = akData.some(r => String(r[col] ?? '').trim() !== '');
-            if (!temDado) return [];
-            return [{
-              key: `cf_${f.id}`, label: f.name, kind: 'custom' as const,
-              fieldId: f.id, fieldType: f.field_type ?? f.type ?? '',
-              enums: [], enabled: true, fonte: 'coluna' as const,
-              coluna: col, valorFixo: '', valorId: '', enumValue: '',
-            } satisfies FieldConfig];
-          });
+
+    const autoMapeados: FieldConfig[] = (() => {
+      if (akTipoPlanilha === 'colaborar') {
+        return COLABORAR_FIELD_MAP.flatMap(map => {
+          const col = akColunas.find(c => c === map.coluna);
+          if (!col) return [];
+          const kommoField = camposKommo.find(f => f.id === map.fieldId);
+          return [{
+            key: `cf_${map.fieldId}`,
+            label: kommoField?.name ?? String(map.fieldId),
+            kind: 'custom' as const,
+            fieldId: map.fieldId,
+            fieldType: kommoField?.field_type ?? kommoField?.type ?? '',
+            enums: kommoField?.enums ?? [],
+            enabled: true,
+            fonte: map.fonte,
+            coluna: col,
+            valorFixo: '', valorId: '', enumValue: '',
+          } satisfies FieldConfig];
+        });
+      }
+      if (enabledCustom.length > 0) return enabledCustom;
+      return camposKommo
+        .filter(f => !fieldIsSelect(f))
+        .flatMap(f => {
+          const col = akColunas.find(c => c.toLowerCase().trim() === f.name.toLowerCase().trim());
+          if (!col) return [];
+          const temDado = akData.some(r => String(r[col] ?? '').trim() !== '');
+          if (!temDado) return [];
+          return [{
+            key: `cf_${f.id}`, label: f.name, kind: 'custom' as const,
+            fieldId: f.id, fieldType: f.field_type ?? f.type ?? '',
+            enums: [], enabled: true, fonte: 'coluna' as const,
+            coluna: col, valorFixo: '', valorId: '', enumValue: '',
+          } satisfies FieldConfig];
+        });
+    })();
 
     for (let i = 0; i < indices.length; i++) {
       if (abortRef.current) break;
@@ -1244,13 +1304,26 @@ function AtualizarKommoTab() {
       const dados = extrairDadosParaCriacao(row);
       setProgress({ atual: i + 1, total: indices.length });
 
+      // Para Colaborar: pipeline/status determinados pela Situação de cada lead
+      let leadPipeId = pipeId;
+      let leadStatId = statId;
+      let leadRespId = respId;
+      if (akTipoPlanilha === 'colaborar') {
+        const situacaoCol = akColunas.find(c => c === 'Situação') ?? '';
+        const situacao = String(row[situacaoCol] ?? '').trim();
+        const dest = colaborarPipelineParaLead(situacao);
+        leadPipeId = dest.pipelineId;
+        leadStatId = dest.statusId;
+        leadRespId = COLABORAR_RESPONSAVEL_ID;
+      }
+
       try {
         // 1. Cria lead (com contato vinculado, se tiver telefone)
         const lead = await criarLeadNoKommo({
           name:          dados.nome,
-          pipelineId:    pipeId,
-          statusId:      statId,
-          responsavelId: respId,
+          pipelineId:    leadPipeId,
+          statusId:      leadStatId,
+          responsavelId: leadRespId,
           telefone:      dados.telefone || undefined,
         });
 
@@ -1263,11 +1336,31 @@ function AtualizarKommoTab() {
             const rawVal  = row[cfg.coluna] ?? '';
             const textVal = String(rawVal).trim();
             if (!textVal) continue;
-            if (fieldIsDate(cfg.fieldType ?? '', cfg.label)) {
+            if (cfg.fonte === 'coluna-enum' && cfg.enums && cfg.enums.length > 0) {
+              const matched = cfg.enums.find(
+                e => e.value.trim().toLowerCase() === textVal.trim().toLowerCase()
+              );
+              if (matched) {
+                customFieldsValues.push({
+                  field_id: cfg.fieldId!,
+                  values: [{ value: matched.value, enum_id: matched.id } as { value: string; enum_id?: number }],
+                });
+              }
+            } else if (fieldIsDate(cfg.fieldType ?? '', cfg.label)) {
               const unix = dateStringToUnix(rawVal);
               if (unix !== null) customFieldsValues.push({ field_id: cfg.fieldId!, values: [{ value: unix }] });
             } else {
               customFieldsValues.push({ field_id: cfg.fieldId!, values: [{ value: textVal }] });
+            }
+          }
+
+          // 2b-extra. Colaborar: injeta anh_Origem = "Colaborar" (enum fixo)
+          if (akTipoPlanilha === 'colaborar') {
+            if (!customFieldsValues.some(v => v.field_id === COLABORAR_ANH_ORIGEM.fieldId)) {
+              customFieldsValues.push({
+                field_id: COLABORAR_ANH_ORIGEM.fieldId,
+                values: [{ value: COLABORAR_ANH_ORIGEM.enumValue, enum_id: COLABORAR_ANH_ORIGEM.enumId } as { value: string; enum_id?: number }],
+              });
             }
           }
 
@@ -1409,8 +1502,30 @@ function AtualizarKommoTab() {
       return cfg;
     });
 
+    // ── Colaborar: sobrescreve com mapeamento fixo ───────────────────────────
+    if (akTipoPlanilha === 'colaborar') {
+      const colaborarConfigs = configs.map(cfg => {
+        // Nome do lead
+        if (cfg.kind === 'nome') {
+          const col = akColunas.find(c => c === 'Nome Completo');
+          return col ? { ...cfg, enabled: true, coluna: col, fonte: 'coluna' as const } : cfg;
+        }
+        // Campos custom — aplica o mapeamento fixo
+        if (cfg.kind === 'custom' && cfg.fieldId) {
+          const map = COLABORAR_FIELD_MAP.find(m => m.fieldId === cfg.fieldId);
+          if (map) {
+            const col = akColunas.find(c => c === map.coluna);
+            if (col) return { ...cfg, enabled: true, coluna: col, fonte: map.fonte };
+          }
+        }
+        return cfg;
+      });
+      setFieldConfigs(colaborarConfigs);
+      return;
+    }
+
     setFieldConfigs(configsAutoMapeados);
-  }, [kommoUsers, kommoPipelines, kommoCustomFields, akColunas, akData]);
+  }, [kommoUsers, kommoPipelines, kommoCustomFields, akColunas, akData, akTipoPlanilha]);
 
   // ── Aplicar atualizações no Kommo ────────────────────────────────────────
   const handleAplicarAtualizacoes = useCallback(async () => {
@@ -1474,8 +1589,19 @@ function AtualizarKommoTab() {
               }
             }
           } else if (cfg.kind === 'custom' && cfg.fieldId) {
-            if (cfg.enums && cfg.enums.length > 0) {
-              // Campo select: envia enum_id + value
+            if (cfg.fonte === 'coluna-enum' && cfg.enums && cfg.enums.length > 0) {
+              // Select cujo valor vem da planilha — faz lookup pelo texto
+              const matched = cfg.enums.find(
+                e => e.value.trim().toLowerCase() === textVal.trim().toLowerCase()
+              );
+              if (matched) {
+                customFieldsValues.push({
+                  field_id: cfg.fieldId,
+                  values: [{ value: matched.value, enum_id: matched.id } as { value: string; enum_id?: number }],
+                });
+              }
+            } else if (cfg.enums && cfg.enums.length > 0) {
+              // Campo select com valor fixo: envia enum_id + value
               const enumId = parseInt(cfg.valorId, 10);
               if (!isNaN(enumId) && cfg.enumValue) {
                 customFieldsValues.push({
@@ -1583,11 +1709,34 @@ function AtualizarKommoTab() {
       </div>
 
       <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
-        <div className="px-6 py-4 border-b border-white/[0.06]">
+        <div className="px-6 py-4 border-b border-white/[0.06] flex items-center justify-between gap-4 flex-wrap">
           <span className="text-white font-semibold">
             <Upload className="w-4 h-4 inline mr-2 text-purple-400" />
             Carregar Planilha com Dados dos Leads
           </span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-slate-500 shrink-0">Tipo:</span>
+            <div className="flex items-center gap-1 bg-white/[0.03] rounded-lg p-1 border border-white/[0.06]">
+              {([
+                { id: 'padrao',       label: 'Padrão'       },
+                { id: 'colaborar',    label: 'Colaborar'    },
+                { id: 'rematricula',  label: 'Rematrícula'  },
+                { id: 'inadimplente', label: 'Inadimplente' },
+              ] as { id: AkTipoPlanilha; label: string }[]).map((tipo) => (
+                <button
+                  key={tipo.id}
+                  onClick={() => setAkTipoPlanilha(tipo.id)}
+                  className={`px-3 py-1 rounded-md text-xs font-medium transition-all ${
+                    akTipoPlanilha === tipo.id
+                      ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                      : 'text-slate-500 hover:text-slate-300 border border-transparent'
+                  }`}
+                >
+                  {tipo.label}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <div className="p-6 space-y-4">
           {loading ? (
@@ -2473,8 +2622,46 @@ function AtualizarKommoTab() {
           );
         })()}
 
-        {/* Metadados opcionais para os novos leads */}
-        <div className="bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden">
+        {/* Colaborar: painel automático de pipeline/status */}
+        {akTipoPlanilha === 'colaborar' && (() => {
+          const situacaoCol = akColunas.find(c => c === 'Situação') ?? '';
+          const counts = { matriculado: 0, outros: 0 };
+          Array.from(criacaoSelecionados).forEach(idx => {
+            const sit = String((akData[idx] ?? {})[situacaoCol] ?? '').trim().toLowerCase();
+            if (sit === 'matriculado') counts.matriculado++; else counts.outros++;
+          });
+          return (
+            <div className="bg-[#161b22] rounded-2xl border border-blue-500/20 overflow-hidden">
+              <div className="px-5 py-4 border-b border-blue-500/15 flex items-center gap-2">
+                <Zap className="w-4 h-4 text-blue-400" />
+                <span className="text-white font-semibold text-sm">Pipeline automático — Colaborar</span>
+              </div>
+              <div className="p-5 space-y-3">
+                <p className="text-xs text-slate-400">
+                  Os leads serão distribuídos automaticamente conforme a coluna <strong className="text-slate-300">Situação</strong>:
+                </p>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+                    <p className="text-xs text-emerald-400 font-semibold mb-1">Matriculado ({counts.matriculado})</p>
+                    <p className="text-xs text-slate-400">Pipeline <span className="text-slate-300">Base de Alunos - Anhanguera</span></p>
+                    <p className="text-xs text-slate-400">Status <span className="text-slate-300">CALOURO</span></p>
+                  </div>
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+                    <p className="text-xs text-amber-400 font-semibold mb-1">Outros status ({counts.outros})</p>
+                    <p className="text-xs text-slate-400">Pipeline <span className="text-slate-300">Anhanguera - Comercial</span></p>
+                    <p className="text-xs text-slate-400">Status <span className="text-slate-300">ROBO</span></p>
+                  </div>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Responsável padrão: <span className="text-slate-300 font-medium">Supervisão</span>
+                </p>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* Metadados opcionais para os novos leads (oculto no modo Colaborar) */}
+        <div className={`bg-[#161b22] rounded-2xl border border-white/[0.07] overflow-hidden ${akTipoPlanilha === 'colaborar' ? 'hidden' : ''}`}>
           <div className="px-5 py-4 border-b border-white/[0.06]">
             <span className="text-white font-semibold text-sm">Configurações para os novos leads</span>
             <p className="text-xs text-slate-500 mt-0.5">Opcional — deixe em branco para usar os padrões da conta Kommo</p>

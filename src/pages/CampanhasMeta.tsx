@@ -32,10 +32,20 @@ interface ConsultantData {
   total: string;
 }
 
+interface GanhosItem {
+  nome: string;
+  bandeira: string;
+  ganhos: number;
+  perdidos: number;
+}
+
 type ApiData = DailyMetrics | ConsultantData;
 
 const WEBHOOK_URL =
   'https://n8n-new-n8n.ca31ey.easypanel.host/webhook/contar_leads_anhanguera_e_sumare';
+
+const WEBHOOK_GANHOS_URL =
+  'https://n8n-new-n8n.ca31ey.easypanel.host/webhook/dashboard_individual_bu';
 
 const COLORS = {
   anhanguera: '#2563eb',
@@ -76,6 +86,7 @@ function parseDate(dateStr: string): string {
 
 export function CampanhasMeta() {
   const [data, setData] = useState<ApiData[]>([]);
+  const [ganhosData, setGanhosData] = useState<GanhosItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [startDate, setStartDate] = useState(getDefaultDates().startDate);
@@ -86,14 +97,26 @@ export function CampanhasMeta() {
     setLoading(true);
     setError(null);
     try {
-      const response = await fetch(WEBHOOK_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ start_date: start, end_date: end }),
-      });
+      const [response, ganhosResponse] = await Promise.all([
+        fetch(WEBHOOK_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start_date: start, end_date: end }),
+        }),
+        fetch(WEBHOOK_GANHOS_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ from: start, to: end, consultor: null, isAdmin: true }),
+        }),
+      ]);
       if (!response.ok) throw new Error('Falha ao carregar dados');
       const jsonData = await response.json();
       setData(jsonData);
+
+      if (ganhosResponse.ok) {
+        const ganhosJson: GanhosItem[] = await ganhosResponse.json();
+        setGanhosData(Array.isArray(ganhosJson) ? ganhosJson : []);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
@@ -124,13 +147,27 @@ export function CampanhasMeta() {
       ? consultantData
       : consultantData.filter((d) => d.bandeira === selectedBrand);
 
-  const totalGanhos = filteredConsultantData
-    .filter((d) => d.status === 'GANHO')
-    .reduce((sum, d) => sum + parseInt(d.total, 10), 0);
+  const filteredGanhosData = ganhosData.filter((d) => {
+    if (selectedBrand === 'all') return true;
+    const b = (d.bandeira ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (selectedBrand === 'anhanguera') return b.includes('anhanguera');
+    if (selectedBrand === 'sumare') return b.includes('sumar');
+    return true;
+  });
 
-  const totalPerdidos = filteredConsultantData
-    .filter((d) => d.status === 'PERDIDO')
-    .reduce((sum, d) => sum + parseInt(d.total, 10), 0);
+  const totalGanhos =
+    filteredGanhosData.length > 0
+      ? filteredGanhosData.reduce((sum, d) => sum + (Number(d.ganhos) || 0), 0)
+      : filteredConsultantData
+          .filter((d) => d.status === 'GANHO')
+          .reduce((sum, d) => sum + parseInt(d.total, 10), 0);
+
+  const totalPerdidos =
+    filteredGanhosData.length > 0
+      ? filteredGanhosData.reduce((sum, d) => sum + (Number(d.perdidos) || 0), 0)
+      : filteredConsultantData
+          .filter((d) => d.status === 'PERDIDO')
+          .reduce((sum, d) => sum + parseInt(d.total, 10), 0);
 
   const conversionRate = totalGanhos + totalPerdidos > 0
     ? ((totalGanhos / (totalGanhos + totalPerdidos)) * 100).toFixed(1)
@@ -165,8 +202,15 @@ export function CampanhasMeta() {
   ];
 
   const consultantPerformance = (() => {
-    const map = new Map<string, { name: string; ganhos: number; perdidos: number }>();
+    if (filteredGanhosData.length > 0) {
+      return filteredGanhosData
+        .map((d) => ({ name: d.nome || '—', ganhos: Number(d.ganhos) || 0, perdidos: Number(d.perdidos) || 0 }))
+        .filter((d) => d.name !== '—' || d.ganhos > 0)
+        .sort((a, b) => b.ganhos - a.ganhos)
+        .slice(0, 8);
+    }
 
+    const map = new Map<string, { name: string; ganhos: number; perdidos: number }>();
     filteredConsultantData.forEach((item) => {
       const existing = map.get(item.consultor) || { name: item.consultor, ganhos: 0, perdidos: 0 };
       if (item.status === 'GANHO') {

@@ -149,6 +149,20 @@ function formatNumber(v: number) {
   return v.toLocaleString('pt-BR');
 }
 
+function normalizeKind(tipo: string | null | undefined) {
+  return (tipo ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase();
+}
+
+function isAtendimento(tipo: string | null | undefined) {
+  const t = normalizeKind(tipo);
+  if (!t) return false;
+  return t.includes('atend') || t.includes('conversa');
+}
+
 function useIsMobile(breakpoint = 640) {
   const [mobile, setMobile] = useState(window.innerWidth < breakpoint);
   useEffect(() => {
@@ -211,13 +225,16 @@ export default function AcademicoColaboradoresPage() {
 
   function processData(rows: SupaRow[]) {
     const withOwner = rows.filter((r) => resolveName(r) !== null);
+    const atendimentoRows = withOwner.filter((r) => isAtendimento(r.tipo));
+    // Fallback para não zerar painel quando a origem muda o "tipo"
+    const baseRows = atendimentoRows.length > 0 ? atendimentoRows : withOwner;
     const grouped: Record<string, { name: string; total: number; atendimentos: number; totalTma: number; tmaCount: number }> = {};
 
-    withOwner.forEach((row) => {
+    baseRows.forEach((row) => {
       const name = resolveName(row)!;
       if (!grouped[name]) grouped[name] = { name, total: 0, atendimentos: 0, totalTma: 0, tmaCount: 0 };
       grouped[name].total++;
-      if (row.tipo === 'Atendimento') grouped[name].atendimentos++;
+      grouped[name].atendimentos++;
       if (row.tma_segundos != null && row.tma_segundos > 0) {
         grouped[name].totalTma += row.tma_segundos;
         grouped[name].tmaCount++;
@@ -238,7 +255,7 @@ export default function AcademicoColaboradoresPage() {
     const total = collabs.reduce((s, c) => s + c.services, 0);
     setTotalServices(total);
 
-    const allTma = withOwner.filter((r) => r.tma_segundos != null && r.tma_segundos > 0);
+    const allTma = baseRows.filter((r) => r.tma_segundos != null && r.tma_segundos > 0);
     if (allTma.length > 0) {
       const avgSec = allTma.reduce((s, r) => s + r.tma_segundos!, 0) / allTma.length;
       const m = Math.floor(avgSec / 60);
@@ -249,7 +266,7 @@ export default function AcademicoColaboradoresPage() {
     }
 
     const dayMap: Record<string, number> = {};
-    withOwner.forEach((r) => {
+    baseRows.forEach((r) => {
       const d = r.data_distribuicao?.slice(0, 10);
       if (d) dayMap[d] = (dayMap[d] ?? 0) + 1;
     });
