@@ -1,3 +1,5 @@
+import { env } from '../config';
+
 export interface Session {
   id: number;
   session_id: string;
@@ -18,14 +20,39 @@ export interface Session {
   created_at: string;
 }
 
+const TABLE = 'anh_google_sessions';
+const PAGE_SIZE = 1000;
+
+function supaHeaders() {
+  return {
+    apikey: env.SUPABASE_SERVICE_KEY,
+    Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+  };
+}
+
 export async function fetchSessions(startDate?: string, endDate?: string): Promise<Session[]> {
-  const params = new URLSearchParams();
-  if (startDate) params.set('start', startDate);
-  if (endDate) params.set('end', endDate);
+  const filters: string[] = [];
+  if (startDate) filters.push(`created_at=gte.${startDate}T00:00:00`);
+  if (endDate) filters.push(`created_at=lte.${endDate}T23:59:59`);
+  const filterStr = filters.length ? '&' + filters.join('&') : '';
 
-  const qs = params.toString() ? `?${params.toString()}` : '';
-  const res = await fetch(`/api/sessions/list${qs}`);
+  const all: Session[] = [];
+  let offset = 0;
 
-  if (!res.ok) throw new Error('Falha ao carregar sessões');
-  return res.json();
+  while (true) {
+    const url =
+      `${env.SUPABASE_URL}/rest/v1/${TABLE}` +
+      `?select=*&order=created_at.desc&limit=${PAGE_SIZE}&offset=${offset}${filterStr}`;
+    const res = await fetch(url, { headers: supaHeaders() });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Falha ao carregar sessões (HTTP ${res.status}) ${body}`);
+    }
+    const batch: Session[] = await res.json();
+    all.push(...batch);
+    if (batch.length < PAGE_SIZE) break;
+    offset += PAGE_SIZE;
+  }
+
+  return all;
 }

@@ -324,8 +324,7 @@ function mapearColuna(colunas: string[], nomesPossiveis: string[]): string | nul
 }
 
 const COLUNAS_ID = ['ID'];
-const COLUNAS_CPF = ['CPF', 'anh_CPF'];
-const COLUNAS_RA = ['RA', 'anh_RA'];
+
 const COLUNAS_TEL = ['Telefone comercial (contato)'];
 
 function ehBaseJaTratada(colunas: string[]): boolean {
@@ -1209,6 +1208,69 @@ function AtualizarKommoTab() {
     setResultados(prev => prev.map(r => r.status === 'encontrado' ? { ...r, selecionado: sel } : r));
   }, []);
 
+  // ── Download dos resultados (R: planilha por seção) ──────────────────────
+  // Nome base do arquivo: usa o nome do upload, removendo a extensão.
+  const baseDownloadName = useMemo(
+    () => (akFileName || 'planilha').replace(/\.xlsx?$/i, ''),
+    [akFileName],
+  );
+
+  const baixarEncontrados = useCallback(() => {
+    const lista = resultados.filter(r => r.status === 'encontrado');
+    if (!lista.length) return;
+
+    const rows = lista.map(r => {
+      const original = akData[r.idx] ?? {};
+      return {
+        'ID Lead': r.leadId ?? '',
+        'Nome do Lead (Kommo)': r.leadNome ?? '',
+        'Valor Buscado': r.valorBusca,
+        'URL Kommo': r.leadId
+          ? `https://${env.KOMMO_SUBDOMAIN}.kommo.com/leads/detail/${r.leadId}`
+          : '',
+        ...original,
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Encontrados');
+    downloadWorkbook(wb, `${baseDownloadName}_encontrados.xlsx`);
+  }, [resultados, akData, baseDownloadName]);
+
+  const baixarNaoEncontrados = useCallback(() => {
+    const lista = resultados.filter(
+      r => r.status === 'nao_encontrado' || r.status === 'erro',
+    );
+    if (!lista.length) return;
+
+    const rows = lista.map(r => {
+      const original = akData[r.idx] ?? {};
+      const dados = extrairDadosParaCriacao(original);
+      return {
+        'Nome': dados.nome,
+        'Telefone': dados.telefone,
+        'RA': dados.ra,
+        'CPF': dados.cpf,
+        'E-mail': dados.email,
+        'Curso': dados.curso,
+        'Polo': dados.polo,
+        'Situação': dados.situacao,
+        'Origem': dados.origem,
+        'Status Busca': r.status === 'erro'
+          ? `Erro: ${r.erro ?? ''}`
+          : 'Não encontrado',
+        'Valor Buscado': r.valorBusca,
+        ...original,
+      };
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Para Criar');
+    downloadWorkbook(wb, `${baseDownloadName}_nao_encontrados.xlsx`);
+  }, [resultados, akData, baseDownloadName]);
+
   const handleReset = useCallback(() => {
     setStep('upload');
     setAkData([]); setAkColunas([]); setAkFileName(''); setAkPreview({});
@@ -1955,7 +2017,7 @@ function AtualizarKommoTab() {
       )}
 
       <div className="flex flex-wrap gap-3 items-center justify-between">
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap">
           <button
             onClick={() => toggleTodos(true)}
             className="px-4 py-2 rounded-lg bg-white/[0.05] border border-white/[0.08] text-sm text-slate-300 hover:bg-white/[0.08] transition-all"
@@ -1967,6 +2029,15 @@ function AtualizarKommoTab() {
             className="px-4 py-2 rounded-lg bg-white/[0.05] border border-white/[0.08] text-sm text-slate-300 hover:bg-white/[0.08] transition-all"
           >
             Limpar seleção
+          </button>
+          <button
+            onClick={baixarEncontrados}
+            disabled={encontrados === 0}
+            title="Baixa uma planilha .xlsx com os leads encontrados (inclui ID Lead Kommo)"
+            className="px-4 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-300 hover:bg-emerald-500/15 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            <Download className="w-4 h-4 inline mr-1.5" />
+            Baixar encontrados ({encontrados})
           </button>
         </div>
         <button
@@ -2076,7 +2147,7 @@ function AtualizarKommoTab() {
                   <span className="ml-2 px-2 py-0.5 rounded-full text-xs font-bold bg-red-500/15 text-red-400">{naoEncontrados}</span>
                 </h3>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 <button
                   onClick={() => toggleTodosCriacao(true)}
                   className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-xs text-slate-300 hover:bg-white/[0.08] transition-all"
@@ -2088,6 +2159,14 @@ function AtualizarKommoTab() {
                   className="px-3 py-1.5 rounded-lg bg-white/[0.05] border border-white/[0.08] text-xs text-slate-300 hover:bg-white/[0.08] transition-all"
                 >
                   Limpar
+                </button>
+                <button
+                  onClick={baixarNaoEncontrados}
+                  title="Baixa uma planilha .xlsx com os dados necessários para criar os leads ausentes"
+                  className="px-3 py-1.5 rounded-lg bg-red-500/10 border border-red-500/20 text-xs text-red-300 hover:bg-red-500/15 transition-all"
+                >
+                  <Download className="w-3 h-3 inline mr-1" />
+                  Baixar não encontrados
                 </button>
                 {totalSel > 0 && (
                   <button

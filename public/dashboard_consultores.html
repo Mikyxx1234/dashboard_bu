@@ -877,6 +877,69 @@
     .premiacao-breakdown-rate  { color: var(--muted); min-width: 52px; }
     .premiacao-breakdown-value { font-weight: 700; color: var(--success); margin-left: auto; }
 
+    /* Detalhamento por meta (aparece somente quando o filtro abrange várias metas) */
+    .premiacao-buckets {
+      grid-column: 1 / -1;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .premiacao-buckets-header {
+      font-size: 0.72rem;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      font-weight: 600;
+    }
+    .premiacao-buckets-list { display: flex; flex-direction: column; gap: 4px; }
+    .premiacao-bucket-row {
+      display: grid;
+      grid-template-columns: auto auto 1fr auto auto;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      background: rgba(255,255,255,0.02);
+      border: 1px solid rgba(255,255,255,0.04);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .premiacao-bucket-row:hover { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.08); }
+    .premiacao-bucket-period { color: var(--text); font-weight: 600; font-size: 0.85rem; }
+    .premiacao-bucket-tier {
+      font-size: 0.7rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      font-weight: 600;
+    }
+    .premiacao-bucket-tier.tier-super  { color: #34d399; background: rgba(52,211,153,0.10); }
+    .premiacao-bucket-tier.tier-meta   { color: #60a5fa; background: rgba(96,165,250,0.10); }
+    .premiacao-bucket-tier.tier-inter  { color: var(--muted); background: rgba(255,255,255,0.06); }
+    .premiacao-bucket-tier.tier-abaixo { color: #fb7185; background: rgba(251,113,133,0.10); }
+    .premiacao-bucket-leads { color: var(--muted); font-size: 0.8rem; }
+    .premiacao-bucket-value { font-weight: 700; color: var(--success); font-size: 0.9rem; }
+    .premiacao-bucket-caret { color: var(--muted-2); font-size: 0.75rem; transition: transform 0.15s; }
+    .premiacao-bucket-row.expanded .premiacao-bucket-caret { transform: rotate(90deg); }
+
+    .premiacao-bucket-detail {
+      display: none;
+      padding: 4px 10px 8px 26px;
+      font-size: 0.78rem;
+      color: var(--muted);
+      flex-direction: column;
+      gap: 2px;
+    }
+    .premiacao-bucket-detail.show { display: flex; }
+    .premiacao-bucket-detail-row { display: flex; gap: 8px; align-items: center; }
+    .premiacao-bucket-detail-row .label { min-width: 38px; color: var(--muted); }
+    .premiacao-bucket-detail-row .calc  { color: var(--text); font-variant-numeric: tabular-nums; }
+    .premiacao-bucket-detail-row .val   { margin-left: auto; color: var(--success); font-weight: 600; }
+
     @media (max-width: 700px) {
       .premiacao-breakdown { min-width: unset; width: 100%; }
     }
@@ -1327,6 +1390,10 @@
             <span class="premiacao-breakdown-value" id="premiacaoValorSCup">—</span>
           </div>
         </div>
+        <div class="premiacao-buckets hidden" id="premiacaoBuckets">
+          <div class="premiacao-buckets-header">Detalhamento por meta</div>
+          <div class="premiacao-buckets-list" id="premiacaoBucketsList"></div>
+        </div>
       </div>
     </section>
 
@@ -1711,62 +1778,125 @@
       return state.normalized.filter(function(item) { return item.nome === state.selectedConsultant; });
     }
 
-    async function fetchMetaFromSupabase() {
+    // ── Helpers de Meta ─────────────────────────────────────────────────────
+    // Lê os campos de uma linha de Meta_ANH e retorna um objeto normalizado.
+    // Usado tanto para popular as variáveis globais (cards do topo) quanto
+    // para calcular o prêmio bucket-a-bucket (uma meta por bucket).
+    function parseMetaRow(row) {
+      if (!row) return null;
+      var abaixoRaw = row.Abaixo != null ? row.Abaixo : row.abaixo;
+      var abaixoNum = Number(abaixoRaw);
+      var abaixo = Number.isFinite(abaixoNum) && abaixoNum >= 0 ? abaixoNum : 1;
+      if (abaixo === 0) abaixo = 1;
+      var ga = row['Ganho Abaixo'] != null ? row['Ganho Abaixo'] : row['Ganho_Abaixo'];
+      if (ga == null) ga = row.ganho_abaixo;
+      return {
+        Inicio:  row.Inicio || '',
+        fim:     row.fim    || '',
+        Abaixo:  abaixo,
+        Inter:   Number(row.Inter) || 0,
+        Meta:    Number(row.Meta)  || 0,
+        Super:   Number(row.Super) || 0,
+        rates: {
+          Abaixo: { ANH: Number(ga) || 0,
+                    Cup: Number(row['Ganho Abaixo Cup'])  || 0,
+                    SCup: Number(row['Ganho Abaixo SCup']) || 0 },
+          Inter:  { ANH: Number(row['Ganho Inter']) || 0,
+                    Cup: Number(row['Ganho Inter Cup'])  || 0,
+                    SCup: Number(row['Ganho Inter SCup']) || 0 },
+          Meta:   { ANH: Number(row['Ganho Meta'])  || 0,
+                    Cup: Number(row['Ganho Meta Cup'])   || 0,
+                    SCup: Number(row['Ganho Meta SCup'])  || 0 },
+          Super:  { ANH: Number(row['Ganho Super']) || 0,
+                    Cup: Number(row['Ganho Super Cup'])  || 0,
+                    SCup: Number(row['Ganho Super SCup']) || 0 }
+        }
+      };
+    }
+
+    // Aplica uma meta parseada às variáveis globais (afeta apenas os cards
+    // do topo / labels de período / labels de ganho por categoria).
+    function applyMetaToGlobals(m) {
+      if (!m) return;
+      META_ABAIXO = m.Abaixo;
+      META_INTER  = m.Inter || META_INTER;
+      META_LEADS  = m.Meta  || META_LEADS;
+      META_SUPER  = m.Super || META_SUPER;
+      META_INICIO = m.Inicio;
+      META_FIM    = m.fim;
+      GANHO_ABAIXO = m.rates.Abaixo.ANH;
+      GANHO_INTER  = m.rates.Inter.ANH;
+      GANHO_META   = m.rates.Meta.ANH;
+      GANHO_SUPER  = m.rates.Super.ANH;
+      GANHO_ABAIXO_CUP = m.rates.Abaixo.Cup;
+      GANHO_INTER_CUP  = m.rates.Inter.Cup;
+      GANHO_META_CUP   = m.rates.Meta.Cup;
+      GANHO_SUPER_CUP  = m.rates.Super.Cup;
+      GANHO_ABAIXO_SCUP = m.rates.Abaixo.SCup;
+      GANHO_INTER_SCUP  = m.rates.Inter.SCup;
+      GANHO_META_SCUP   = m.rates.Meta.SCup;
+      GANHO_SUPER_SCUP  = m.rates.Super.SCup;
+    }
+
+    function metaHeaders() {
+      return {
+        'apikey': SUPABASE_SERVICE_KEY,
+        'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
+        'Accept': 'application/json'
+      };
+    }
+
+    // Busca todas as metas que se intersectam com [from, to], em ordem
+    // crescente de Inicio. Se nenhuma intersectar, devolve a última cadastrada
+    // como fallback (mantém os cards funcionando mesmo fora do range).
+    async function fetchMetasInRange(from, to) {
       try {
-        var today = new Date().toISOString().slice(0, 10);
-        var metaHeaders = {
-          'apikey': SUPABASE_SERVICE_KEY,
-          'Authorization': 'Bearer ' + SUPABASE_SERVICE_KEY,
-          'Accept': 'application/json'
-        };
-        var url = SUPABASE_URL + '/rest/v1/Meta_ANH?select=*&Inicio=lte.' + today + '&fim=gte.' + today + '&order=id.desc&limit=1';
-        var response = await fetch(url, { headers: metaHeaders });
-        if (!response.ok) throw new Error('HTTP ' + response.status);
-        var rows = await response.json();
+        var url = SUPABASE_URL + '/rest/v1/Meta_ANH?select=*'
+          + '&Inicio=lte.' + encodeURIComponent(to)
+          + '&fim=gte.'    + encodeURIComponent(from)
+          + '&order=Inicio.asc';
+        var resp = await fetch(url, { headers: metaHeaders() });
+        if (!resp.ok) throw new Error('HTTP ' + resp.status);
+        var rows = await resp.json();
+        if (rows && rows.length) return rows.map(parseMetaRow).filter(Boolean);
 
-        if (!rows || rows.length === 0) {
-          var fallbackUrl = SUPABASE_URL + '/rest/v1/Meta_ANH?select=*&order=id.desc&limit=1';
-          var fallbackResp = await fetch(fallbackUrl, { headers: metaHeaders });
-          if (fallbackResp.ok) rows = await fallbackResp.json();
+        var fb = await fetch(SUPABASE_URL + '/rest/v1/Meta_ANH?select=*&order=Inicio.desc&limit=1', { headers: metaHeaders() });
+        if (fb.ok) {
+          var fbRows = await fb.json();
+          if (fbRows && fbRows.length) return fbRows.map(parseMetaRow).filter(Boolean);
         }
-
-        if (rows && rows.length > 0) {
-          var row = rows[0];
-          var abaixoRaw = row.Abaixo != null ? row.Abaixo : row.abaixo;
-          var abaixoNum = Number(abaixoRaw);
-          META_ABAIXO = Number.isFinite(abaixoNum) && abaixoNum >= 0 ? abaixoNum : 1;
-          if (META_ABAIXO === 0) META_ABAIXO = 1;
-          META_INTER = Number(row.Inter) || META_INTER;
-          META_LEADS = Number(row.Meta) || META_LEADS;
-          META_SUPER = Number(row.Super) || META_SUPER;
-          META_INICIO = row.Inicio || '';
-          META_FIM = row.fim || '';
-          var ga = row['Ganho Abaixo'] != null ? row['Ganho Abaixo'] : row['Ganho_Abaixo'];
-          if (ga == null) ga = row.ganho_abaixo;
-          GANHO_ABAIXO = Number(ga) || 0;
-          GANHO_INTER = Number(row['Ganho Inter']) || 0;
-          GANHO_META = Number(row['Ganho Meta']) || 0;
-          GANHO_SUPER = Number(row['Ganho Super']) || 0;
-          // Cupom
-          GANHO_ABAIXO_CUP = Number(row['Ganho Abaixo Cup']) || 0;
-          GANHO_INTER_CUP  = Number(row['Ganho Inter Cup'])  || 0;
-          GANHO_META_CUP   = Number(row['Ganho Meta Cup'])   || 0;
-          GANHO_SUPER_CUP  = Number(row['Ganho Super Cup'])  || 0;
-          // Sem Cupom
-          GANHO_ABAIXO_SCUP = Number(row['Ganho Abaixo SCup']) || 0;
-          GANHO_INTER_SCUP  = Number(row['Ganho Inter SCup'])  || 0;
-          GANHO_META_SCUP   = Number(row['Ganho Meta SCup'])   || 0;
-          GANHO_SUPER_SCUP  = Number(row['Ganho Super SCup'])  || 0;
-          updateMetaPeriodLabel();
-          updateMetaBalloon();
-          updateGanhoLabels();
-          console.log('Meta carregada do Supabase:', { Abaixo: META_ABAIXO, Inter: META_INTER, Meta: META_LEADS, Super: META_SUPER, Inicio: META_INICIO, fim: META_FIM, Ganho_Abaixo: GANHO_ABAIXO, Ganho_Inter: GANHO_INTER, Ganho_Meta: GANHO_META, Ganho_Super: GANHO_SUPER });
-        } else {
-          console.warn('Tabela Meta_ANH vazia, usando valores padrão.');
-        }
+        return [];
       } catch (err) {
-        console.error('Erro ao buscar Meta_ANH do Supabase:', err);
+        console.error('Erro ao buscar Meta_ANH (range):', err);
+        return [];
       }
+    }
+
+    // Compatibilidade: busca a meta vigente HOJE e aplica nas variáveis
+    // globais. Mantida porque é chamada na inicialização (antes de o filtro
+    // de data existir) e em pontos de refresh manual.
+    async function fetchMetaFromSupabase() {
+      var today = new Date().toISOString().slice(0, 10);
+      var metas = await fetchMetasInRange(today, today);
+      if (!metas.length) {
+        console.warn('Tabela Meta_ANH vazia, usando valores padrão.');
+        return;
+      }
+      applyMetaToGlobals(metas[metas.length - 1]);
+      updateMetaPeriodLabel();
+      updateMetaBalloon();
+      updateGanhoLabels();
+      console.log('Meta carregada do Supabase:', { Abaixo: META_ABAIXO, Inter: META_INTER, Meta: META_LEADS, Super: META_SUPER, Inicio: META_INICIO, fim: META_FIM });
+    }
+
+    // Devolve a interseção de [aStart, aEnd] com [bStart, bEnd], ou null se
+    // não houver. Strings ISO 'YYYY-MM-DD'.
+    function intersectDateRange(aStart, aEnd, bStart, bEnd) {
+      if (!aStart || !aEnd || !bStart || !bEnd) return null;
+      var from = aStart > bStart ? aStart : bStart;
+      var to   = aEnd   < bEnd   ? aEnd   : bEnd;
+      if (from > to) return null;
+      return { from: from, to: to };
     }
 
     function updateMetaPeriodLabel() {
@@ -1884,123 +2014,270 @@
     }
 
     // ── Cálculo de premiação por categoria ──────────────────────────────────
-    function updatePremiacao(ganhosANH, ganhosCupom, ganhosSemCupom) {
-      var card   = document.getElementById('premiacaoCard');
+    // Recebe array de buckets {meta, ganhosANH, ganhosCupom, ganhosSemCupom}.
+    // Cada bucket calcula seu próprio tier (Opção A: tier por meta vigente);
+    // o total exibido é a soma dos prêmios de cada bucket.
+    function updatePremiacaoFromBuckets(buckets) {
+      var card    = document.getElementById('premiacaoCard');
       var totalEl = document.getElementById('premiacaoTotal');
       var catEl   = document.getElementById('premiacaoCategoria');
       var leadsEl = document.getElementById('premiacaoLeads');
+      var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
       if (!card) return;
 
-      var totalLeads = (ganhosANH || 0) + (ganhosCupom || 0) + (ganhosSemCupom || 0);
+      if (state.isAdmin && !state.selectedConsultant) { card.classList.add('hidden'); return; }
+      if (!buckets || !buckets.length)               { card.classList.add('hidden'); return; }
 
-      if (ganhosANH == null || (state.isAdmin && !state.selectedConsultant)) {
-        card.classList.add('hidden');
-        return;
+      function tierFor(total, m) {
+        if (total >= m.Super && m.Super > 0)   return 'Super';
+        if (total >= m.Meta  && m.Meta  > 0)   return 'Meta';
+        if (total >= m.Inter && m.Inter > 0)   return 'Inter';
+        if (total > 0)                         return 'Abaixo';
+        return '';
       }
 
-      // Determinar tier pelo total de leads
-      var tier = '';
-      if      (totalLeads >= META_SUPER && META_SUPER > 0)               tier = 'Super';
-      else if (totalLeads >= META_LEADS && META_LEADS > 0)               tier = 'Meta';
-      else if (totalLeads >= META_INTER && META_INTER > 0)               tier = 'Inter';
-      else if (totalLeads > 0 && (META_INTER === 0 || totalLeads < META_INTER)) tier = 'Abaixo';
+      var totalLeads = 0, totalGanhosANH = 0, totalGanhosCup = 0, totalGanhosSCup = 0;
+      var totalPremio = 0, totalPremioANH = 0, totalPremioCup = 0, totalPremioSCup = 0;
+      var lastTier = '';
 
-      // Valores por categoria para o tier
-      var rateANH = 0, rateCup = 0, rateSCup = 0;
-      if (tier === 'Super')  { rateANH = GANHO_SUPER;  rateCup = GANHO_SUPER_CUP;  rateSCup = GANHO_SUPER_SCUP;  }
-      else if (tier === 'Meta')   { rateANH = GANHO_META;   rateCup = GANHO_META_CUP;   rateSCup = GANHO_META_SCUP;   }
-      else if (tier === 'Inter')  { rateANH = GANHO_INTER;  rateCup = GANHO_INTER_CUP;  rateSCup = GANHO_INTER_SCUP;  }
-      else if (tier === 'Abaixo') { rateANH = GANHO_ABAIXO; rateCup = GANHO_ABAIXO_CUP; rateSCup = GANHO_ABAIXO_SCUP; }
+      buckets.forEach(function(b) {
+        var bTotal = (b.ganhosANH || 0) + (b.ganhosCupom || 0) + (b.ganhosSemCupom || 0);
+        totalLeads      += bTotal;
+        totalGanhosANH  += (b.ganhosANH      || 0);
+        totalGanhosCup  += (b.ganhosCupom    || 0);
+        totalGanhosSCup += (b.ganhosSemCupom || 0);
 
-      // Prêmios individuais
-      var premioANH  = (ganhosANH    || 0) * rateANH;
-      var premioCup  = (ganhosCupom  || 0) * rateCup;
-      var premioSCup = (ganhosSemCupom || 0) * rateSCup;
-      var totalPremio = premioANH + premioCup + premioSCup;
+        var tier = tierFor(bTotal, b.meta);
+        if (tier) lastTier = tier;
+        var rate = tier ? b.meta.rates[tier] : { ANH: 0, Cup: 0, SCup: 0 };
+
+        var pANH  = (b.ganhosANH      || 0) * rate.ANH;
+        var pCup  = (b.ganhosCupom    || 0) * rate.Cup;
+        var pSCup = (b.ganhosSemCupom || 0) * rate.SCup;
+        totalPremio    += pANH + pCup + pSCup;
+        totalPremioANH += pANH;
+        totalPremioCup += pCup;
+        totalPremioSCup+= pSCup;
+      });
 
       card.classList.remove('hidden');
-
       if (totalEl) totalEl.textContent = formatCurrency(totalPremio);
       if (leadsEl) leadsEl.textContent = formatNumber(totalLeads);
+
+      var multipleMetas = buckets.length > 1;
       if (catEl) {
-        if (!tier) {
-          catEl.textContent = totalLeads === 0 ? 'Sem leads' : '—';
+        if (totalLeads === 0) {
+          catEl.textContent = 'Sem leads';
           catEl.className = 'premiacao-detail-value tier-pending';
-        } else {
-          catEl.textContent = tier;
+        } else if (multipleMetas) {
+          catEl.textContent = (lastTier || '—') + ' (múltiplas metas)';
           catEl.className = 'premiacao-detail-value tier-active';
+          catEl.title = 'O filtro abrange ' + buckets.length + ' metas. Cada lead foi pontuado conforme a meta vigente em sua data.';
+        } else {
+          catEl.textContent = lastTier || '—';
+          catEl.className = 'premiacao-detail-value tier-active';
+          catEl.title = '';
         }
       }
 
-      // Helper para setar elemento
-      var set = function(id, val) { var el = document.getElementById(id); if (el) el.textContent = val; };
+      var rateANH = '—', rateCup = '—', rateSCup = '—';
+      if (!multipleMetas && lastTier) {
+        var r = buckets[0].meta.rates[lastTier];
+        rateANH  = r.ANH  ? formatCurrency(r.ANH)  : '—';
+        rateCup  = r.Cup  ? formatCurrency(r.Cup)  : '—';
+        rateSCup = r.SCup ? formatCurrency(r.SCup) : '—';
+      }
 
-      // Breakdown ANH
-      set('premiacaoLeadsANH', formatNumber(ganhosANH || 0));
-      set('premiacaoRateANH',  rateANH  ? formatCurrency(rateANH)  : '—');
-      set('premiacaoValorANH', premioANH ? formatCurrency(premioANH) : 'R$ 0,00');
-      // Breakdown Cupom
-      set('premiacaoLeadsCup', formatNumber(ganhosCupom || 0));
-      set('premiacaoRateCup',  rateCup  ? formatCurrency(rateCup)  : '—');
-      set('premiacaoValorCup', premioCup ? formatCurrency(premioCup) : 'R$ 0,00');
-      // Breakdown Sem Cupom
-      set('premiacaoLeadsSCup', formatNumber(ganhosSemCupom || 0));
-      set('premiacaoRateSCup',  rateSCup  ? formatCurrency(rateSCup)  : '—');
-      set('premiacaoValorSCup', premioSCup ? formatCurrency(premioSCup) : 'R$ 0,00');
+      set('premiacaoLeadsANH',  formatNumber(totalGanhosANH));
+      set('premiacaoRateANH',   rateANH);
+      set('premiacaoValorANH',  totalPremioANH ? formatCurrency(totalPremioANH) : 'R$ 0,00');
+      set('premiacaoLeadsCup',  formatNumber(totalGanhosCup));
+      set('premiacaoRateCup',   rateCup);
+      set('premiacaoValorCup',  totalPremioCup ? formatCurrency(totalPremioCup) : 'R$ 0,00');
+      set('premiacaoLeadsSCup', formatNumber(totalGanhosSCup));
+      set('premiacaoRateSCup',  rateSCup);
+      set('premiacaoValorSCup', totalPremioSCup ? formatCurrency(totalPremioSCup) : 'R$ 0,00');
+
+      renderBucketDetail(buckets);
+    }
+
+    // Renderiza a lista de detalhamento por meta. Aparece somente quando há
+    // mais de uma meta no range. Cada linha clicável expande a quebra
+    // ANH/Cup/S-Cup com as rates daquela meta específica.
+    function renderBucketDetail(buckets) {
+      var wrap = document.getElementById('premiacaoBuckets');
+      var list = document.getElementById('premiacaoBucketsList');
+      if (!wrap || !list) return;
+
+      if (!buckets || buckets.length <= 1) {
+        wrap.classList.add('hidden');
+        list.innerHTML = '';
+        return;
+      }
+
+      function fmtPeriodo(iso) {
+        var p = String(iso || '').split('-');
+        return p.length === 3 ? p[2] + '/' + p[1] : iso;
+      }
+      function tierFor(total, m) {
+        if (total >= m.Super && m.Super > 0) return 'Super';
+        if (total >= m.Meta  && m.Meta  > 0) return 'Meta';
+        if (total >= m.Inter && m.Inter > 0) return 'Inter';
+        if (total > 0)                       return 'Abaixo';
+        return '';
+      }
+
+      list.innerHTML = '';
+      buckets.forEach(function(b) {
+        var bTotal = (b.ganhosANH || 0) + (b.ganhosCupom || 0) + (b.ganhosSemCupom || 0);
+        var tier = tierFor(bTotal, b.meta);
+        var rate = tier ? b.meta.rates[tier] : { ANH: 0, Cup: 0, SCup: 0 };
+        var pANH  = (b.ganhosANH      || 0) * rate.ANH;
+        var pCup  = (b.ganhosCupom    || 0) * rate.Cup;
+        var pSCup = (b.ganhosSemCupom || 0) * rate.SCup;
+        var pTotal = pANH + pCup + pSCup;
+
+        var row = document.createElement('div');
+        row.className = 'premiacao-bucket-row';
+        var tierClass = tier ? ' tier-' + tier.toLowerCase() : '';
+        row.innerHTML =
+            '<span class="premiacao-bucket-period">' + fmtPeriodo(b.from) + ' \u2192 ' + fmtPeriodo(b.to) + '</span>'
+          + '<span class="premiacao-bucket-tier' + tierClass + '">' + (tier || '—') + '</span>'
+          + '<span class="premiacao-bucket-leads">' + formatNumber(bTotal) + ' leads</span>'
+          + '<span class="premiacao-bucket-value">' + formatCurrency(pTotal) + '</span>'
+          + '<span class="premiacao-bucket-caret">\u25B8</span>';
+
+        var detail = document.createElement('div');
+        detail.className = 'premiacao-bucket-detail';
+        detail.innerHTML =
+            '<div class="premiacao-bucket-detail-row"><span class="label">ANH</span>'
+          +   '<span class="calc">' + formatNumber(b.ganhosANH || 0) + ' \u00D7 ' + (rate.ANH ? formatCurrency(rate.ANH) : '—') + '</span>'
+          +   '<span class="val">' + formatCurrency(pANH) + '</span></div>'
+          + '<div class="premiacao-bucket-detail-row"><span class="label">Cup</span>'
+          +   '<span class="calc">' + formatNumber(b.ganhosCupom || 0) + ' \u00D7 ' + (rate.Cup ? formatCurrency(rate.Cup) : '—') + '</span>'
+          +   '<span class="val">' + formatCurrency(pCup) + '</span></div>'
+          + '<div class="premiacao-bucket-detail-row"><span class="label">S/Cup</span>'
+          +   '<span class="calc">' + formatNumber(b.ganhosSemCupom || 0) + ' \u00D7 ' + (rate.SCup ? formatCurrency(rate.SCup) : '—') + '</span>'
+          +   '<span class="val">' + formatCurrency(pSCup) + '</span></div>';
+
+        row.addEventListener('click', function() {
+          row.classList.toggle('expanded');
+          detail.classList.toggle('show');
+        });
+
+        list.appendChild(row);
+        list.appendChild(detail);
+      });
+
+      wrap.classList.remove('hidden');
+    }
+
+    // Calcula um bucket: pega ganhos ANH + Sumaré para a janela [from, to],
+    // restritos ao consultor escopado. Faz uma chamada ao webhook e uma ao
+    // Supabase por bucket.
+    async function fetchBucketGanhos(consultor, isAdmin, from, to) {
+      try {
+        var anhPayload = await requestWebhook(WEBHOOK_URL, {
+          from: from, to: to, consultor: consultor, isAdmin: !!isAdmin
+        });
+        var anhRows = extractArray(anhPayload).map(normalizeItem);
+        if (!isAdmin) anhRows = anhRows.filter(function(r) { return r.nome === consultor; });
+        else if (consultor) anhRows = anhRows.filter(function(r) { return r.nome === consultor; });
+        var ganhosANH = anhRows
+          .filter(function(r) { return r.bandeira === 'Anhanguera'; })
+          .reduce(function(s, r) { return s + Number(r.ganhos || 0); }, 0);
+
+        var sumSplit = await fetchSumCupomSplit(consultor, from, to);
+        return { ganhosANH: ganhosANH, ganhosCupom: sumSplit.cupom, ganhosSemCupom: sumSplit.semCupom };
+      } catch (err) {
+        console.error('Erro ao calcular bucket [' + from + ', ' + to + ']:', err);
+        return { ganhosANH: 0, ganhosCupom: 0, ganhosSemCupom: 0 };
+      }
     }
 
     async function updateMetaBalloon() {
       if (!els.metaFaltaValue) return;
 
+      var from = els.fromDate ? els.fromDate.value : '';
+      var to   = els.toDate   ? els.toDate.value   : '';
+
+      // 1) Buscar todas as metas que se intersectam com o filtro.
+      //    A última (mais recente) define os cards do topo.
+      var metasInRange = (from && to) ? await fetchMetasInRange(from, to) : [];
+      var displayMeta = metasInRange.length ? metasInRange[metasInRange.length - 1] : null;
+      if (displayMeta) {
+        applyMetaToGlobals(displayMeta);
+        updateMetaPeriodLabel();
+        updateGanhoLabels();
+      }
+
       var abaixoEl = document.getElementById('metaAbaixoValue');
-      var interEl = document.getElementById('metaInterValue');
-      var metaEl = document.getElementById('metaMetaValue');
-      var superEl = document.getElementById('metaSuperValue');
+      var interEl  = document.getElementById('metaInterValue');
+      var metaEl   = document.getElementById('metaMetaValue');
+      var superEl  = document.getElementById('metaSuperValue');
       if (abaixoEl) abaixoEl.textContent = formatNumber(META_ABAIXO);
-      if (interEl) interEl.textContent = formatNumber(META_INTER);
-      if (metaEl) metaEl.textContent = formatNumber(META_LEADS);
-      if (superEl) superEl.textContent = formatNumber(META_SUPER);
+      if (interEl)  interEl.textContent  = formatNumber(META_INTER);
+      if (metaEl)   metaEl.textContent   = formatNumber(META_LEADS);
+      if (superEl)  superEl.textContent  = formatNumber(META_SUPER);
+
+      var labelEl = els.metaFaltaContainer ? els.metaFaltaContainer.querySelector('.meta-falta-label') : null;
 
       if (state.isAdmin && !state.selectedConsultant) {
         if (els.metaRealizadosValue) els.metaRealizadosValue.textContent = '—';
         els.metaFaltaValue.textContent = '—';
         els.metaFaltaValue.classList.remove('achieved');
-        var labelEl = els.metaFaltaContainer ? els.metaFaltaContainer.querySelector('.meta-falta-label') : null;
         if (labelEl) labelEl.textContent = 'Falta para a meta';
-        updatePremiacao(null, 0, 0);
+        updatePremiacaoFromBuckets([]);
         return;
       }
 
-      var itemsForScope = getFilteredItems();
-
-      // Ganhos Anhanguera (já disponíveis no webhook)
-      var ganhosANH = itemsForScope
-        .filter(function(item) { return item.bandeira === 'Anhanguera'; })
-        .reduce(function(sum, item) { return sum + Number(item.ganhos || 0); }, 0);
-
-      // Ganhos Sumaré: buscar split Cupom/Sem Cupom no Supabase
       var consultor = state.isAdmin ? state.selectedConsultant : state.authenticatedConsultant;
-      var from = els.fromDate ? els.fromDate.value : '';
-      var to   = els.toDate   ? els.toDate.value   : '';
-      var sumSplit = await fetchSumCupomSplit(consultor, from, to);
 
-      // Total para exibir "realizados"
-      var ganhosCurrent = ganhosANH + sumSplit.total;
+      // 2) Para cada meta no range, calcular o bucket. Em paralelo.
+      var buckets = [];
+      if (metasInRange.length && from && to) {
+        var bucketPromises = metasInRange.map(function(m) {
+          var inter = intersectDateRange(from, to, m.Inicio, m.fim);
+          if (!inter) return null;
+          return fetchBucketGanhos(consultor, state.isAdmin, inter.from, inter.to)
+            .then(function(g) { return { meta: m, from: inter.from, to: inter.to,
+                                         ganhosANH: g.ganhosANH,
+                                         ganhosCupom: g.ganhosCupom,
+                                         ganhosSemCupom: g.ganhosSemCupom }; });
+        }).filter(Boolean);
+        buckets = await Promise.all(bucketPromises);
+      } else {
+        // Fallback: nenhuma meta no range — usa o que já está em state.normalized
+        var itemsForScope = getFilteredItems();
+        var ganhosANH = itemsForScope
+          .filter(function(item) { return item.bandeira === 'Anhanguera'; })
+          .reduce(function(sum, item) { return sum + Number(item.ganhos || 0); }, 0);
+        var sumSplit = await fetchSumCupomSplit(consultor, from, to);
+        if (displayMeta) {
+          buckets = [{ meta: displayMeta, from: from, to: to,
+                       ganhosANH: ganhosANH, ganhosCupom: sumSplit.cupom, ganhosSemCupom: sumSplit.semCupom }];
+        }
+      }
+
+      // 3) Total realizados (todos os buckets)
+      var ganhosCurrent = buckets.reduce(function(s, b) {
+        return s + (b.ganhosANH || 0) + (b.ganhosCupom || 0) + (b.ganhosSemCupom || 0);
+      }, 0);
       if (els.metaRealizadosValue) els.metaRealizadosValue.textContent = formatNumber(ganhosCurrent);
 
-      updatePremiacao(ganhosANH, sumSplit.cupom, sumSplit.semCupom);
+      // 4) Calcular prêmio bucket-a-bucket
+      updatePremiacaoFromBuckets(buckets);
 
+      // 5) "Falta para a meta": referência é a meta exibida (mais recente)
       var faltam = Math.max(0, META_LEADS - ganhosCurrent);
-      var labelEl2 = els.metaFaltaContainer ? els.metaFaltaContainer.querySelector('.meta-falta-label') : null;
-
       if (faltam === 0) {
         els.metaFaltaValue.textContent = '✓';
         els.metaFaltaValue.classList.add('achieved');
-        if (labelEl2) labelEl2.textContent = 'Meta atingida!';
+        if (labelEl) labelEl.textContent = 'Meta atingida!';
       } else {
         els.metaFaltaValue.textContent = formatNumber(faltam);
         els.metaFaltaValue.classList.remove('achieved');
-        if (labelEl2) labelEl2.textContent = 'Falta para a meta';
+        if (labelEl) labelEl.textContent = 'Falta para a meta';
       }
     }
 

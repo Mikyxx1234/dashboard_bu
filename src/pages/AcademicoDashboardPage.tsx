@@ -40,6 +40,39 @@ async function supaGet<T>(view: string): Promise<T[]> {
   return res.json();
 }
 
+// HEAD com count=exact em uma tabela de qualquer schema. Retorna apenas o total.
+async function supaCount(schema: string, table: string, filter = ''): Promise<number> {
+  const url = `${env.SUPABASE_URL}/rest/v1/${table}?select=id${filter ? `&${filter}` : ''}`;
+  const res = await fetch(url, {
+    method: 'HEAD',
+    headers: {
+      ...supaHeaders(),
+      'Accept-Profile': schema,
+      Prefer: 'count=exact',
+    },
+  });
+  const cr = res.headers.get('content-range') ?? '';
+  const m = cr.match(/\/(\d+)$/);
+  return m ? Number(m[1]) : 0;
+}
+
+/**
+ * Soma de "Alunos Ativos" calculada a partir das tabelas-fonte:
+ *   - bu_academico.alunos_colaborar  → situacao_matricula IN ('Matricula Ativa','Formando')
+ *   - bu_academico.alunos_pos        → situacao_matricula IN ('ATIVA','PRE_CONFIRMADA')
+ *   - bu_academico.alunos_ptc_1      → todos
+ */
+async function fetchAlunosAtivos(): Promise<number> {
+  const [colabAtivos, colabFormando, posAtiva, posPreConf, ptc] = await Promise.all([
+    supaCount('bu_academico', 'alunos_colaborar', `situacao_matricula=eq.${encodeURIComponent('Matricula Ativa')}`),
+    supaCount('bu_academico', 'alunos_colaborar', `situacao_matricula=eq.${encodeURIComponent('Formando')}`),
+    supaCount('bu_academico', 'alunos_pos',       `situacao_matricula=eq.ATIVA`),
+    supaCount('bu_academico', 'alunos_pos',       `situacao_matricula=eq.PRE_CONFIRMADA`),
+    supaCount('bu_academico', 'alunos_ptc_1'),
+  ]);
+  return colabAtivos + colabFormando + posAtiva + posPreConf + ptc;
+}
+
 /* ── Types ── */
 
 interface KpiRow {
@@ -122,13 +155,23 @@ export default function AcademicoDashboardPage() {
     setLoading(true);
     setError(null);
     try {
-      const [kpiRows, tlRows, saRows, sfRows] = await Promise.all([
+      const [kpiRows, tlRows, saRows, sfRows, alunosAtivosLive] = await Promise.all([
         supaGet<KpiRow>(VIEWS.kpis),
         supaGet<TimelineRow>(VIEWS.timeline),
         supaGet<StatusRow>(VIEWS.statusAlunos),
         supaGet<StatusRow>(VIEWS.statusFinanceiro),
+        fetchAlunosAtivos(),
       ]);
-      setKpis(kpiRows[0] ?? null);
+      // Sobrescreve alunos_ativos com a soma calculada em tempo real a partir das
+      // tabelas-fonte (alunos_colaborar + alunos_pos + alunos_ptc_1).
+      const baseKpi = kpiRows[0] ?? {
+        alunos_ativos: 0,
+        inadimplentes: 0,
+        boletos_aberto: 0,
+        evasao: 0,
+        entrada_alunos: 0,
+      };
+      setKpis({ ...baseKpi, alunos_ativos: alunosAtivosLive });
       setTimeline(tlRows);
       setStatusAlunos(saRows);
       setStatusFinanceiro(sfRows);

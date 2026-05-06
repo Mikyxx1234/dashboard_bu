@@ -17,7 +17,6 @@ export default function AnhangueraDashboard() {
   const [toast, setToast] = useState({ show: false, message: '', success: true });
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [activeTab, setActiveTab] = useState<'comercial' | 'academico'>('comercial');
-  const [academicoKey, setAcademicoKey] = useState(0);
 
   const showToast = (message: string, success = true) => {
     setToast({ show: true, message, success });

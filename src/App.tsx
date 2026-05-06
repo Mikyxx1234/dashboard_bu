@@ -17,6 +17,8 @@ import BlogAdminPage from './pages/BlogAdminPage';
 import BlogCreatePage from './pages/BlogCreatePage';
 import SessionsDashboard from './pages/SessionsDashboard';
 import LeadsParadosPage from './pages/LeadsParadosPage';
+import MuralAvisosPage from './pages/MuralAvisosPage';
+import CalendarioAcademicoPage from './pages/CalendarioAcademicoPage';
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { isAdmin } = useAuth();
@@ -55,6 +57,9 @@ export default function App() {
             {/* Acadêmico */}
             <Route path="academico" element={<AdminRoute><AcademicoDashboardPage /></AdminRoute>} />
             <Route path="academico/colaboradores" element={<AdminRoute><AcademicoColaboradoresPage /></AdminRoute>} />
+            {/* Novas funcionalidades */}
+            <Route path="mural-avisos" element={<MuralAvisosPage />} />
+            <Route path="calendario-academico" element={<CalendarioAcademicoPage />} />
           </Route>
         </Routes>
       </AuthProvider>

@@ -1,5 +1,9 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Users, TrendingUp, Search, RefreshCw, FileText } from 'lucide-react';
+import {
+  Megaphone, Users, TrendingUp, BarChart2, Search,
+  RefreshCw, AlertCircle, FileText, Target,
+} from 'lucide-react';
+import { SkeletonStat, SkeletonTableRows } from '../components/Skeleton';
 
 interface CampaignData {
   campaign_name: string;
@@ -9,11 +13,9 @@ interface CampaignData {
   novos: number;
   ganhos: number;
   perdidos: number;
-  conversion_rate: number;
 }
 
 interface ApiResponse {
-  dia_brasilia: string;
   utm_campaign: string;
   utm_content: string;
   utm_source: string;
@@ -21,88 +23,87 @@ interface ApiResponse {
   novos: string;
   ganhos: string;
   perdidos: string;
-  saldo: string;
-  conv_ganho_sobre_novo_pct: string | null;
-  perda_sobre_novo_pct: string | null;
-  winrate_pct: string | null;
   total_funil: string;
-  total_registros: string;
-  total_leads_unicos_por_status: string;
 }
 
 const WEBHOOK_URL =
   'https://n8n-new-n8n.ca31ey.easypanel.host/webhook/meta_leads_anh';
 
-function getDefaultDates() {
-  const today = new Date();
-  return {
-    startDate: today.toISOString().split('T')[0],
-    endDate: today.toISOString().split('T')[0],
-  };
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
 }
 
-function formatDate(dateStr: string) {
-  const [year, month, day] = dateStr.split('-');
-  return `${day}/${month}/${year}`;
+function convRate(novos: number, ganhos: number) {
+  if (novos === 0) return 0;
+  return (ganhos / novos) * 100;
 }
+
+function convColor(pct: number) {
+  if (pct >= 15) return 'bg-emerald-500';
+  if (pct >= 8)  return 'bg-blue-500';
+  if (pct >= 4)  return 'bg-amber-500';
+  return 'bg-red-500';
+}
+
+function convTextColor(pct: number) {
+  if (pct >= 15) return 'text-emerald-400';
+  if (pct >= 8)  return 'text-blue-400';
+  if (pct >= 4)  return 'text-amber-400';
+  return 'text-red-400';
+}
+
+const selectClass =
+  'rounded-lg border border-gray-700 bg-gray-800 px-3 py-2 text-sm text-white outline-none transition focus:border-blue-500 focus:ring-1 focus:ring-blue-500/30';
 
 export function MetaCampanhas() {
-  const [data, setData] = useState<CampaignData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [startDate, setStartDate] = useState(getDefaultDates().startDate);
-  const [endDate, setEndDate] = useState(getDefaultDates().endDate);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedType, setSelectedType] = useState('Todos os Tipos');
-  const [selectedCampaign, setSelectedCampaign] = useState('Todas as Campanhas');
+  const [data, setData]               = useState<CampaignData[]>([]);
+  const [loading, setLoading]         = useState(true);
+  const [error, setError]             = useState('');
+  const [startDate, setStartDate]     = useState(todayStr);
+  const [endDate, setEndDate]         = useState(todayStr);
+  const [searchTerm, setSearchTerm]   = useState('');
+  const [selectedType, setSelectedType]         = useState('Todos');
+  const [selectedCampaign, setSelectedCampaign] = useState('Todas');
 
   const fetchData = useCallback(async (start: string, end: string) => {
     setLoading(true);
-    setError(null);
+    setError('');
     try {
-      const response = await fetch(WEBHOOK_URL, {
+      const res = await fetch(WEBHOOK_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ from: start, to: end }),
       });
-      if (!response.ok) throw new Error('Falha ao carregar dados');
-      const jsonData: ApiResponse[] = await response.json();
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const json: ApiResponse[] = await res.json();
 
-      const campaignMap = new Map<string, CampaignData>();
-
-      if (Array.isArray(jsonData)) {
-        jsonData.forEach((item) => {
-          const campaignName = item.utm_campaign || 'Sem nome';
-          const existing = campaignMap.get(campaignName);
-
-          const novos = parseInt(item.novos, 10) || 0;
-          const ganhos = parseInt(item.ganhos, 10) || 0;
+      const map = new Map<string, CampaignData>();
+      if (Array.isArray(json)) {
+        for (const item of json) {
+          const name = item.utm_campaign || 'Sem nome';
+          const novos    = parseInt(item.novos, 10)    || 0;
+          const ganhos   = parseInt(item.ganhos, 10)   || 0;
           const perdidos = parseInt(item.perdidos, 10) || 0;
-          const totalFunil = parseInt(item.total_funil, 10) || 0;
+          const total    = parseInt(item.total_funil, 10) || 0;
 
-          if (existing) {
-            existing.total += totalFunil;
-            existing.novos += novos;
-            existing.ganhos += ganhos;
-            existing.perdidos += perdidos;
+          const ex = map.get(name);
+          if (ex) {
+            ex.total    += total;
+            ex.novos    += novos;
+            ex.ganhos   += ganhos;
+            ex.perdidos += perdidos;
           } else {
-            campaignMap.set(campaignName, {
-              campaign_name: campaignName,
+            map.set(name, {
+              campaign_name: name,
               campaign_type: item.utm_content || 'Não definido',
-              source: `${item.utm_source || 'Meta'} • ${item.utm_medium || 'whatsapp_ads'}`,
-              total: totalFunil,
-              novos,
-              ganhos,
-              perdidos,
-              conversion_rate: 0,
+              source: `${item.utm_source || 'Meta'} · ${item.utm_medium || 'ads'}`,
+              total, novos, ganhos, perdidos,
             });
           }
-        });
+        }
       }
-
-      const campaigns = Array.from(campaignMap.values()).sort((a, b) => b.total - a.total);
-      setData(campaigns);
-    } catch (err) {
+      setData([...map.values()].sort((a, b) => b.total - a.total));
+    } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
       setData([]);
     } finally {
@@ -110,225 +111,229 @@ export function MetaCampanhas() {
     }
   }, []);
 
-  useEffect(() => {
-    fetchData(startDate, endDate);
-  }, []);
+  useEffect(() => { fetchData(startDate, endDate); }, []); // eslint-disable-line
 
-  const filteredData = data.filter((campaign) => {
-    const matchesSearch = campaign.campaign_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesType = selectedType === 'Todos os Tipos' || campaign.campaign_type === selectedType;
-    const matchesCampaign = selectedCampaign === 'Todas as Campanhas' || campaign.campaign_name === selectedCampaign;
-    return matchesSearch && matchesType && matchesCampaign;
+  const types     = ['Todos',  ...new Set(data.map((d) => d.campaign_type))];
+  const campaigns = ['Todas', ...new Set(data.map((d) => d.campaign_name))];
+
+  const filtered = data.filter((c) => {
+    const matchSearch   = c.campaign_name.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchType     = selectedType     === 'Todos'  || c.campaign_type   === selectedType;
+    const matchCampaign = selectedCampaign === 'Todas'  || c.campaign_name   === selectedCampaign;
+    return matchSearch && matchType && matchCampaign;
   });
 
   const totals = {
-    total: filteredData.reduce((sum, d) => sum + d.total, 0),
-    novos: filteredData.reduce((sum, d) => sum + d.novos, 0),
-    ganhos: filteredData.reduce((sum, d) => sum + d.ganhos, 0),
+    funil:  filtered.reduce((s, d) => s + d.total,    0),
+    novos:  filtered.reduce((s, d) => s + d.novos,    0),
+    ganhos: filtered.reduce((s, d) => s + d.ganhos,   0),
+    perdidos: filtered.reduce((s, d) => s + d.perdidos, 0),
   };
-
-  const overallConversionRate = totals.novos > 0 ? ((totals.ganhos / totals.novos) * 100).toFixed(1) : '0';
-
-  const campaignTypes = ['Todos os Tipos', ...new Set(data.map((d) => d.campaign_type))];
-  const campaignNames = ['Todas as Campanhas', ...new Set(data.map((d) => d.campaign_name))];
+  const taxaGeral = convRate(totals.novos, totals.ganhos);
 
   return (
-    <div className="bg-[#0d1117] min-h-screen">
-      <div className="px-6 py-6">
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-white tracking-tight">Campaign Performance</h1>
-          <p className="text-sm text-gray-400 uppercase tracking-wider mt-1">LEAD TRACKING & CONVERSION DASHBOARD</p>
+    <div className="min-h-screen bg-gray-950 p-6">
+
+      {/* ── Header ─────────────────────────────────────────── */}
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="flex items-center gap-3 text-2xl font-bold text-white">
+            <Megaphone className="h-7 w-7 text-blue-400" />
+            Meta - Campanhas
+          </h1>
+          <p className="mt-1 text-sm text-gray-400">
+            Rastreamento de leads e conversões por campanha Meta Ads
+          </p>
         </div>
+        <button
+          onClick={() => fetchData(startDate, endDate)}
+          disabled={loading}
+          className="flex items-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:opacity-50"
+        >
+          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+          Atualizar
+        </button>
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-          <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">TOTAL FUNIL</p>
-                <p className="text-4xl font-bold text-white">{totals.total}</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-[#1f6feb]/20 flex items-center justify-center">
-                <Users className="w-6 h-6 text-[#58a6ff]" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">TOTAL GANHOS</p>
-                <p className="text-4xl font-bold text-green-400">{totals.ganhos}</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-green-500/20 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-green-400" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-[#161b22] border border-[#30363d] rounded-lg p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-400 uppercase tracking-wider mb-1">CONVERSAO TOTAL</p>
-                <p className="text-4xl font-bold text-[#f97316]">{overallConversionRate}%</p>
-              </div>
-              <div className="w-12 h-12 rounded-lg bg-[#f97316]/20 flex items-center justify-center">
-                <TrendingUp className="w-6 h-6 text-[#f97316]" />
-              </div>
-            </div>
-          </div>
+      {/* ── Erro ───────────────────────────────────────────── */}
+      {error && (
+        <div className="mb-5 flex items-center gap-3 rounded-lg border border-red-800 bg-red-900/30 p-4 text-sm text-red-300">
+          <AlertCircle className="h-4 w-4 flex-shrink-0" />
+          {error}
         </div>
+      )}
 
-        <div className="flex flex-wrap items-center gap-4 mb-6">
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">CRIATIVO</p>
-            <select
-              value={selectedType}
-              onChange={(e) => setSelectedType(e.target.value)}
-              className="bg-[#161b22] border border-[#30363d] text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#58a6ff] min-w-[160px]"
-            >
-              {campaignTypes.map((type) => (
-                <option key={type} value={type} className="bg-[#161b22] text-white">{type}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">CAMPANHA</p>
-            <select
-              value={selectedCampaign}
-              onChange={(e) => setSelectedCampaign(e.target.value)}
-              className="bg-[#161b22] border border-[#30363d] text-white rounded-lg px-4 py-2.5 text-sm [color-scheme:dark] focus:outline-none focus:border-[#58a6ff] min-w-[200px]"
-            >
-              {campaignNames.map((name) => (
-                <option key={name} value={name} className="bg-[#161b22] text-white">{name}</option>
-              ))}
-            </select>
-          </div>
-
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wider mb-2">TIMEFRAME</p>
-            <div className="flex items-center gap-2">
-              <div className="relative">
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(e) => setStartDate(e.target.value)}
-                  className="bg-[#161b22] border border-[#30363d] text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#58a6ff]"
-                />
-              </div>
-              <div className="relative">
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(e) => setEndDate(e.target.value)}
-                  className="bg-[#161b22] border border-[#30363d] text-white rounded-lg px-4 py-2.5 text-sm focus:outline-none focus:border-[#58a6ff]"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div className="flex-1">
-            <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 opacity-0">SEARCH</p>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search campaigns..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="bg-[#161b22] border border-[#30363d] text-white rounded-lg pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:border-[#58a6ff] w-full max-w-xs"
-              />
-            </div>
-          </div>
-
-          <div>
-            <p className="text-xs text-gray-400 uppercase tracking-wider mb-2 opacity-0">ACTION</p>
-            <button
-              onClick={() => fetchData(startDate, endDate)}
-              disabled={loading}
-              className="bg-[#f97316] hover:bg-[#ea580c] text-white font-medium rounded-lg px-6 py-2.5 text-sm transition-colors disabled:opacity-50 flex items-center gap-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Atualizar
-            </button>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-4 mb-4 text-sm text-gray-400">
-          <span>Mostrando <span className="text-[#f97316] font-semibold">{filteredData.length}</span> campanhas</span>
-          <span>Status: <span className="text-green-400 font-semibold">{error ? 'ERROR' : 'OK'}</span></span>
-        </div>
-
-        {error && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-800 rounded-lg text-red-400">
-            {error}
-          </div>
+      {/* ── Stats ──────────────────────────────────────────── */}
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {loading && data.length === 0 ? (
+          <>
+            <SkeletonStat /><SkeletonStat /><SkeletonStat /><SkeletonStat />
+          </>
+        ) : (
+          <>
+            <StatCard icon={<Users className="h-5 w-5 text-blue-400" />}   iconBg="bg-blue-500/10"    label="Total Funil"      value={totals.funil}   />
+            <StatCard icon={<Target className="h-5 w-5 text-sky-400" />}   iconBg="bg-sky-500/10"     label="Leads Novos"      value={totals.novos}   />
+            <StatCard icon={<TrendingUp className="h-5 w-5 text-emerald-400" />} iconBg="bg-emerald-500/10" label="Leads Ganhos" value={totals.ganhos}  />
+            <StatCard
+              icon={<BarChart2 className="h-5 w-5 text-amber-400" />}
+              iconBg="bg-amber-500/10"
+              label="Taxa de Conversão"
+              value={`${taxaGeral.toFixed(1)}%`}
+              valueColor={convTextColor(taxaGeral)}
+            />
+          </>
         )}
+      </div>
 
-        <div className="bg-[#161b22] border border-[#30363d] rounded-lg overflow-hidden">
-          <table className="w-full">
+      {/* ── Filtros ────────────────────────────────────────── */}
+      <div className="mb-5 flex flex-wrap items-end gap-3">
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-500">Criativo</label>
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className={selectClass}
+            style={{ colorScheme: 'dark' }}
+          >
+            {types.map((t) => <option key={t} value={t}>{t}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-500">Campanha</label>
+          <select
+            value={selectedCampaign}
+            onChange={(e) => setSelectedCampaign(e.target.value)}
+            className={`${selectClass} max-w-[220px]`}
+            style={{ colorScheme: 'dark' }}
+          >
+            {campaigns.map((c) => <option key={c} value={c}>{c}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-500">Data início</label>
+          <input
+            type="date"
+            value={startDate}
+            onChange={(e) => setStartDate(e.target.value)}
+            className={selectClass}
+            style={{ colorScheme: 'dark' }}
+          />
+        </div>
+
+        <div>
+          <label className="mb-1.5 block text-xs font-medium text-gray-500">Data fim</label>
+          <input
+            type="date"
+            value={endDate}
+            onChange={(e) => setEndDate(e.target.value)}
+            className={selectClass}
+            style={{ colorScheme: 'dark' }}
+          />
+        </div>
+
+        <div className="flex-1">
+          <label className="mb-1.5 block text-xs font-medium text-gray-500">Buscar</label>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
+            <input
+              type="text"
+              placeholder="Nome da campanha..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={`${selectClass} pl-9 w-full max-w-xs`}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Status bar */}
+      <div className="mb-3 flex items-center gap-4 text-xs text-gray-600">
+        <span>
+          <span className="font-semibold text-gray-400">{filtered.length}</span> campanha{filtered.length !== 1 ? 's' : ''} exibida{filtered.length !== 1 ? 's' : ''}
+        </span>
+        <span className={`font-semibold ${error ? 'text-red-400' : 'text-emerald-400'}`}>
+          {error ? '● Erro' : '● Online'}
+        </span>
+      </div>
+
+      {/* ── Tabela ─────────────────────────────────────────── */}
+      <div className="overflow-hidden rounded-xl border border-gray-800 bg-gray-900">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#30363d]">
-                <th className="text-left px-6 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">CAMPAIGN NAME</th>
-                <th className="text-left px-4 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">TYPE</th>
-                <th className="text-center px-4 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">TOTAL FUNIL</th>
-                <th className="text-center px-4 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">NOVOS</th>
-                <th className="text-center px-4 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">GANHOS</th>
-                <th className="text-center px-4 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">PERDIDOS</th>
-                <th className="text-left px-4 py-4 text-xs font-medium text-gray-400 uppercase tracking-wider">CONV. RATE (%)</th>
+              <tr className="border-b border-gray-800">
+                <th className="px-5 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Campanha</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Criativo</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Funil</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Novos</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Ganhos</th>
+                <th className="px-4 py-3 text-center text-xs font-semibold uppercase tracking-wider text-gray-500">Perdidos</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider text-gray-500">Conversão</th>
               </tr>
             </thead>
             <tbody>
               {loading && data.length === 0 ? (
+                <SkeletonTableRows rows={5} cols={7} />
+              ) : filtered.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center">
-                    <RefreshCw className="w-8 h-8 animate-spin text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-400">Carregando dados...</p>
-                  </td>
-                </tr>
-              ) : filteredData.length === 0 ? (
-                <tr>
-                  <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
-                    Nenhuma campanha encontrada
+                  <td colSpan={7} className="py-16 text-center">
+                    <FileText className="mx-auto mb-3 h-10 w-10 text-gray-700" />
+                    <p className="text-gray-500">Nenhuma campanha encontrada</p>
                   </td>
                 </tr>
               ) : (
-                filteredData.map((campaign, idx) => {
-                  const convRate = campaign.novos > 0 ? ((campaign.ganhos / campaign.novos) * 100) : 0;
+                filtered.map((c, i) => {
+                  const pct = convRate(c.novos, c.ganhos);
                   return (
-                    <tr key={idx} className="border-b border-[#30363d] hover:bg-[#1c2128] transition-colors">
-                      <td className="px-6 py-4">
+                    <tr
+                      key={i}
+                      className="border-b border-gray-800/60 transition hover:bg-gray-800/40"
+                    >
+                      {/* Campanha */}
+                      <td className="px-5 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded bg-[#30363d] flex items-center justify-center">
-                            <FileText className="w-4 h-4 text-gray-400" />
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                            <Megaphone className="h-4 w-4 text-blue-400" />
                           </div>
-                          <div>
-                            <p className="text-white font-medium text-sm truncate max-w-[200px]">{campaign.campaign_name}</p>
-                            <p className="text-gray-500 text-xs">{campaign.source}</p>
+                          <div className="min-w-0">
+                            <p className="truncate max-w-[200px] font-medium text-white">{c.campaign_name}</p>
+                            <p className="text-xs text-gray-500">{c.source}</p>
                           </div>
                         </div>
                       </td>
-                      <td className="px-4 py-4">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded text-xs font-medium bg-[#f97316] text-white truncate max-w-[100px]">
-                          {campaign.campaign_type}
+
+                      {/* Criativo */}
+                      <td className="px-4 py-3">
+                        <span className="inline-block max-w-[120px] truncate rounded-full border border-gray-700 bg-gray-800 px-2.5 py-0.5 text-xs text-gray-300">
+                          {c.campaign_type}
                         </span>
                       </td>
-                      <td className="px-4 py-4 text-center text-white font-semibold">{campaign.total}</td>
-                      <td className="px-4 py-4 text-center text-blue-400 font-semibold">{campaign.novos}</td>
-                      <td className="px-4 py-4 text-center text-green-400 font-semibold">{campaign.ganhos}</td>
-                      <td className="px-4 py-4 text-center text-red-400 font-semibold">{campaign.perdidos}</td>
-                      <td className="px-4 py-4">
+
+                      {/* Funil */}
+                      <td className="px-4 py-3 text-center font-semibold text-white">{c.total}</td>
+
+                      {/* Novos */}
+                      <td className="px-4 py-3 text-center font-semibold text-sky-400">{c.novos}</td>
+
+                      {/* Ganhos */}
+                      <td className="px-4 py-3 text-center font-semibold text-emerald-400">{c.ganhos}</td>
+
+                      {/* Perdidos */}
+                      <td className="px-4 py-3 text-center font-semibold text-red-400">{c.perdidos}</td>
+
+                      {/* Conversão */}
+                      <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
-                          <div className="flex-1 max-w-[100px]">
-                            <div className="h-2 bg-[#30363d] rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-gradient-to-r from-[#f97316] to-[#fbbf24] rounded-full transition-all duration-500"
-                                style={{ width: `${Math.min(convRate, 100)}%` }}
-                              />
-                            </div>
+                          <div className="h-1.5 w-20 overflow-hidden rounded-full bg-gray-800">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${convColor(pct)}`}
+                              style={{ width: `${Math.min(pct, 100)}%` }}
+                            />
                           </div>
-                          <span className="text-white font-semibold text-sm w-14 text-right">
-                            {convRate > 0 ? `${convRate.toFixed(1)}%` : '--'}
+                          <span className={`w-12 text-right text-sm font-semibold ${convTextColor(pct)}`}>
+                            {pct > 0 ? `${pct.toFixed(1)}%` : '—'}
                           </span>
                         </div>
                       </td>
@@ -338,6 +343,31 @@ export function MetaCampanhas() {
               )}
             </tbody>
           </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sub-componente: card de stat
+// ---------------------------------------------------------------------------
+function StatCard({
+  icon, iconBg, label, value, valueColor = 'text-white',
+}: {
+  icon: React.ReactNode;
+  iconBg: string;
+  label: string;
+  value: number | string;
+  valueColor?: string;
+}) {
+  return (
+    <div className="rounded-xl border border-gray-800 bg-gray-900 p-4">
+      <div className="flex items-center gap-3">
+        <div className={`rounded-lg p-2 ${iconBg}`}>{icon}</div>
+        <div>
+          <p className={`text-2xl font-bold ${valueColor}`}>{value}</p>
+          <p className="text-xs text-gray-400">{label}</p>
         </div>
       </div>
     </div>

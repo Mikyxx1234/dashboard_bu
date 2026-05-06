@@ -1,10 +1,12 @@
 import { useState, useCallback } from 'react';
 import { Outlet, Navigate } from 'react-router-dom';
-import { Menu, X } from 'lucide-react';
+import { Menu } from 'lucide-react';
 import { Sidebar } from './Sidebar';
+import { AvisoPopup } from './AvisoPopup';
+import { MetaCountdown } from './MetaCountdown';
 import { useAuth } from '../contexts/AuthContext';
 
-const SIDEBAR_W = 256;
+const SIDEBAR_W = 288;
 
 export function Layout() {
   const { user } = useAuth();
@@ -50,9 +52,13 @@ export function Layout() {
       )}
 
       {/* Content */}
-      <div className="min-h-screen flex-1" style={{ background: '#0c1222' }}>
+      <div className="flex min-h-screen flex-1 flex-col" style={{ background: '#0c1222' }}>
+        <MetaCountdown />
         <Outlet />
       </div>
+
+      {/* Popup de avisos — exibido automaticamente para consultores */}
+      <AvisoPopup />
     </div>
   );
 }

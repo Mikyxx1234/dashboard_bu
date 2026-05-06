@@ -1,0 +1,51 @@
+---
+description: Convenções de frontend React/TS e HTML legacy do dashboard
+globs: src/**/*.{ts,tsx},public/**/*.html
+alwaysApply: false
+---
+
+# Frontend — convenções
+
+## Variáveis de ambiente
+
+**Sempre** importar de `src/config.ts`:
+
+```ts
+import { env } from '../config';
+
+fetch(`${env.SUPABASE_URL}/rest/v1/sum_leads_ganhos`, {
+  headers: {
+    apikey: env.SUPABASE_SERVICE_KEY,
+    Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+  },
+});
+```
+
+`config.ts` lê primeiro `window.__env__` (injetado em runtime pelo Docker) e cai no `import.meta.env.VITE_*` em dev.
+
+**Não** quebrar o contrato `window.__env__` — `entrypoint.sh` reescreve `public/env-config.js` em produção.
+
+## HTML legacy (`public/dashboard_consultores.html`)
+
+- Recebe credenciais via querystring: `?sbUrl=...&sbAnon=...&sbService=...`
+- Quem abre é `src/pages/LeadsDashboard.tsx` (envia em `iframe.src`)
+- Não importar nada nem refatorar para módulo — é standalone propositalmente
+- Para mudanças, prefira `Grep` direcionado em vez de ler o arquivo todo (~2600 linhas)
+
+## Padrões React
+
+- Componentes funcionais, hooks
+- Roteamento via `react-router-dom@7` em `src/App.tsx`
+- Páginas em `src/pages/*.tsx`, componentes compartilhados em `src/components/`
+- Auth via `src/contexts/AuthContext.tsx` (tabela `Senhas Dash` no Supabase)
+- Estilização via Tailwind; componentes legados podem usar inline-style
+
+## Kommo no frontend
+
+Sempre via proxy `/kommo-api/...`. Regras detalhadas em [kommo.mdc](kommo.mdc).
+
+## Não fazer
+
+- Não usar `process.env` no código React — use `import.meta.env` ou `env`
+- Não importar `@supabase/supabase-js` para fazer chamadas — use `fetch` direto (ver [supabase.mdc](supabase.mdc))
+- Não duplicar credenciais em componentes — usar sempre `env`

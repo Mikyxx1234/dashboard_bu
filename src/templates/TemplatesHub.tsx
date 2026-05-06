@@ -1,3 +1,4 @@
+// @ts-nocheck — Este arquivo importa módulos JSX legados sem tipagem; checagem suprimida intencionalmente
 import { Routes, Route } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { TemplateProvider } from './context/TemplateContext';

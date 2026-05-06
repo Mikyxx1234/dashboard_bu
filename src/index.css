@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Scrollbar global — tema escuro do dashboard */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.10);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.18);
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.10) transparent;
+}
+
 @layer components {
   .templates-scope .btn-primary {
     @apply text-white px-5 py-2.5 rounded-xl transition font-semibold text-sm inline-flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;

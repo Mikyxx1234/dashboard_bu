@@ -35,10 +35,6 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       proxy: {
-        '/api/sessions': {
-          target: 'http://localhost:3001',
-          changeOrigin: true,
-        },
         '/kommo-api': {
           target: `https://${kommoSubdomain}.kommo.com`,
           changeOrigin: true,

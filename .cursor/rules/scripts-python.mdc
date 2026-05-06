@@ -1,0 +1,59 @@
+---
+description: Convenções para scripts Python (encoding, dependências, terminal Windows)
+globs: **/*.py
+alwaysApply: false
+---
+
+# Scripts Python — convenções
+
+## Encoding obrigatório (Windows / PowerShell)
+
+Antes de rodar qualquer script com `print(...)` contendo acentos ou símbolos UTF-8 (`→`, `✓`, `—`):
+
+```powershell
+$env:PYTHONIOENCODING="utf-8"; python <script>.py
+```
+
+Sem isso, o terminal cp1252 quebra com `UnicodeEncodeError`.
+
+## Dependências
+
+Padrão do projeto: usar **só biblioteca padrão** sempre que possível.
+
+- HTTP: `urllib.request` + `urllib.parse` (não usar `requests` em scripts novos)
+- JSON: `json`
+- Datas: `datetime`
+- Excel: `openpyxl` (única dependência externa aceita) — instalar sob demanda no início do script:
+
+```python
+try:
+    import openpyxl
+except ImportError:
+    import subprocess, sys
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "openpyxl"])
+    import openpyxl
+```
+
+## Não fazer
+
+- **Não chamar comandos com `&&` no PowerShell** — use `;` ou rode comandos separados.
+- **Não hardcodar credenciais** em scripts novos. Os scripts existentes (`preencher_polo_sumaganhos.py`, `gerar_planilha_ganhos.py`) têm tokens em texto claro, mas isso é débito técnico — em código novo use `os.environ.get()`:
+
+```python
+import os
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+if not SUPABASE_KEY:
+    raise SystemExit("Defina SUPABASE_SERVICE_KEY no ambiente")
+```
+
+## Padrões prontos no repo
+
+Usar como base:
+- `preencher_polo_sumaganhos.py` — template para sync Kommo → Supabase com batch
+- `gerar_planilha_ganhos.py` — template para gerar Excel estilizado a partir de queries Supabase
+
+## Saída e log
+
+- Mensagens curtas, em português
+- Salvar log detalhado em arquivo `.txt` quando houver muita iteração (ver `log_polo_sumaganhos.txt`)
+- Imprimir resumo numérico no fim (`atualizados`, `erros`, `total`)

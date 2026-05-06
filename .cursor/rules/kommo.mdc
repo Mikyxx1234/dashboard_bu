@@ -1,0 +1,60 @@
+---
+description: Convenções de integração com Kommo CRM (proxy, custom fields)
+globs: **/*.{ts,tsx,js,jsx,html,py}
+alwaysApply: false
+---
+
+# Kommo CRM — convenções
+
+Subdomínio padrão: **`academicosoead`**. Todas as URLs de produção apontam para `https://academicosoead.kommo.com`.
+
+## Frontend → use o proxy
+
+**Sempre** chamar via `/kommo-api/...`. Nunca usar `*.kommo.com` direto no código React/HTML, senão o CORS quebra:
+
+```js
+// ✅ correto
+fetch('/kommo-api/api/v4/users?limit=250', {
+  headers: { Authorization: `Bearer ${env.KOMMO_TOKEN}` },
+});
+
+// ❌ errado
+fetch('https://academicosoead.kommo.com/api/v4/users', ...);
+```
+
+O proxy é configurado em:
+- `vite.config.ts` (dev server)
+- `nginx.conf` / `nginx.conf.template` (produção Docker)
+
+## Scripts standalone (Python/Node)
+
+Scripts fora do navegador chamam direto:
+
+```python
+url = f"https://{KOMMO_SUBDOMAIN}.kommo.com/api/v4/leads?with=custom_fields&limit=50"
+```
+
+## Custom fields
+
+Os IDs estão hardcoded em vários lugares. **Não duplicar** — sempre referenciar [../../docs/kommo-integracao.md](../../docs/kommo-integracao.md).
+
+IDs mais usados:
+- `1475381` — `sum_Polo`
+- `412934` — `Polo` (campo principal)
+- `412928` CPF / `412930` RA / `412932` Curso
+- Família `anh_*`: `1475385` (Nome), `1475387` (CPF), `1475389` (Telefone), `1475405` (Polo), etc.
+
+## Padrões de query
+
+- Lista filtrada por IDs: `?filter[id][]=23740513&filter[id][]=23740514`
+- Lista com custom fields: `?with=custom_fields`
+- Paginação: `?limit=250&page=N`
+- Filtro por status: `?filter[statuses][0][pipeline_id]=X&filter[statuses][0][status_id]=Y`
+
+## Endpoints comuns
+
+`/api/v4/leads`, `/leads/{id}`, `/leads/custom_fields`, `/leads/pipelines`, `/leads/{id}/notes`, `/contacts`, `/contacts/{id}`, `/contacts/custom_fields`, `/users`, `/tasks`.
+
+## Cache
+
+Frontend tem cache de usuários (`_kommoUsersCache` em `dashboard_consultores.html` e `fetchKommoUsers` em `FormatarPlanilhaPage.tsx`) — chamar a função uma vez e reutilizar.

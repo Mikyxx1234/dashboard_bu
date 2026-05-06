@@ -20,4 +20,26 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Secrets / env (R11)
 .env
+.env.*
+!.env.example
+
+# Generated logs from scripts
+log_*.txt
+
+# Generated/data spreadsheets — keep .env.example-style files out of git
+*.xlsx
+
+# OpenAPI / Supabase specs (regenerate on demand; large + may leak schema)
+supa_openapi.json
+supabase_spec.json
+
+# Backup / "copy" duplicates that should not be versioned
+* copy.*
+
+# Local helper / debug scripts (uncomment if these become local-only)
+# debug-data.mjs
+# verificar-planilha.mjs
+# gerar-planilha-base.mjs

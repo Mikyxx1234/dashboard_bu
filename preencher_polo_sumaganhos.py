@@ -5,16 +5,47 @@ buscando as informações no Kommo:
   - Prioridade 2: campo Polo     (id: 412934)
 """
 
+import os
+import sys
 import urllib.request
 import urllib.parse
 import json
 import time
 
+
+def _load_dotenv(path=".env"):
+    """Carrega variaveis de um .env no os.environ, sem dependencia externa."""
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            k, v = line.split("=", 1)
+            k = k.strip()
+            v = v.strip().strip('"').strip("'")
+            os.environ.setdefault(k, v)
+
+
+def _required(key):
+    val = os.environ.get(key)
+    if not val:
+        sys.stderr.write(
+            f"[preencher_polo] Variavel de ambiente ausente: {key}\n"
+            f"Defina em .env ou no shell antes de rodar.\n"
+        )
+        sys.exit(1)
+    return val
+
+
+_load_dotenv()
+
 # ─── Configurações ───────────────────────────────────────────
-SUPABASE_URL   = "https://tufvduiaybogfhgausqj.supabase.co"
-SUPABASE_KEY   = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InR1ZnZkdWlheWJvZ2ZoZ2F1c3FqIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1NzA5NTI2OSwiZXhwIjoyMDcyNjcxMjY5fQ.dhfyYnXfPXHsly0YAmpUP7yS7U6CB0qkyihMPlRMfPg"
-KOMMO_TOKEN    = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsImp0aSI6IjgyMDIwZGM3OGMxYjgzMWRhZWE4MDNmOWYyMDYyMmYzNWQzNzNhOGU5MjIyNzU3YWVjZDUzZTg5YzE3NmFkMDRjN2Y4OTQyODRhZDRiNzliIn0.eyJhdWQiOiIzOTlhYjUzOS1lMWY5LTQzZjEtOWFhNS1mMzg2MTY0ZDVhYWQiLCJqdGkiOiI4MjAyMGRjNzhjMWI4MzFkYWVhODAzZjlmMjA2MjJmMzVkMzczYThlOTIyMjc1N2FlY2Q1M2U4OWMxNzZhZDA0YzdmODk0Mjg0YWQ0Yjc5YiIsImlhdCI6MTc3NjE5NzYxNCwibmJmIjoxNzc2MTk3NjE0LCJleHAiOjE4MTA3NzEyMDAsInN1YiI6IjExNjE2MDY4IiwiZ3JhbnRfdHlwZSI6IiIsImFjY291bnRfaWQiOjMxNjk3MzQ3LCJiYXNlX2RvbWFpbiI6ImtvbW1vLmNvbSIsInZlcnNpb24iOjIsInNjb3BlcyI6WyJwdXNoX25vdGlmaWNhdGlvbnMiLCJmaWxlcyIsImNybSIsImZpbGVzX2RlbGV0ZSIsIm5vdGlmaWNhdGlvbnMiXSwiaGFzaF91dWlkIjoiMmE4NjAwZWQtMThmMC00NTdjLWEwNDEtOTUyZjljNmJmMDFlIiwiYXBpX2RvbWFpbiI6ImFwaS1nLmtvbW1vLmNvbSJ9.itYoGOmQISRpO0mO2cXJ3kMv5gYuookH-praHvEjzi3Eg0TbLYxCaxjNjNsAe1dCA5HADi5QwEhC-P-n-PL4tyV7To1AiqiRSQ2_SrV6dmStZP9L35bd1yuIjLiAwD_F4DzJCfhFWlJe2H8WNtucII5keqlK7Ray9sWHkYmXDHWKezWu1vJETljVDhC9fnOMsqth28TF4GkuO9D_wI17TuwT0SHuowOKeOqVQ_EfowRFhwBeLylEwxZrhR7Sie6AWP_hkXl87ejXVqNvHVi33Sct1b_c90XuzN2mVDzi0EeidoHjUj5gwVsE35sFLQFRqhhLZ-4NMIBWSdm4s5xywQ"
-KOMMO_SUBDOMAIN = "academicosoead"
+SUPABASE_URL    = _required("SUPABASE_URL")
+SUPABASE_KEY    = _required("SUPABASE_SERVICE_KEY")
+KOMMO_TOKEN     = _required("KOMMO_TOKEN")
+KOMMO_SUBDOMAIN = os.environ.get("KOMMO_SUBDOMAIN", "academicosoead")
 TABELA          = "sum_leads_ganhos"
 SUM_POLO_ID     = 1475381
 POLO_ID         = 412934

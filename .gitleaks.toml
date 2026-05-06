@@ -1,0 +1,26 @@
+# Gitleaks config (R17)
+# Extends the default rule set; only adds allowlist entries here.
+# https://github.com/gitleaks/gitleaks#configuration
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for known-safe placeholders"
+
+# Files that intentionally contain placeholder strings looking like secrets.
+paths = [
+  '''(^|/)\.env\.example$''',
+  '''(^|/)\.env\.sample$''',
+  '''(^|/)docs/.*\.md$''',
+  '''(^|/)AGENTS\.md$''',
+]
+
+# Common placeholder values used across docs / .env.example.
+regexes = [
+  '''your-anon-key''',
+  '''your-service-role-key''',
+  '''your-project\.supabase\.co''',
+  '''your-kommo-bearer-token''',
+  '''trocar-em-producao''',
+]

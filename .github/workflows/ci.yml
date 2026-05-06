@@ -1,0 +1,67 @@
+name: CI
+
+# R15 — npm audit + lint + typecheck + build
+# Runs on every push and PR. The audit job is non-blocking for `low`
+# severity but will fail the build for `high`/`critical` findings.
+
+on:
+  push:
+    branches: [main, master, develop]
+  pull_request:
+    branches: [main, master, develop]
+  schedule:
+    # Weekly Monday 06:00 UTC — catches new advisories on stable deps
+    - cron: '0 6 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Lint, typecheck and build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build
+        run: npm run build
+
+  audit:
+    name: npm audit (R15)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fail the build only on high/critical advisories. Adjust to `moderate`
+      # once existing findings are triaged.
+      - name: Run npm audit (production)
+        run: npm audit --omit=dev --audit-level=high
+
+      # Informational pass for dev deps — never blocks the build, but the
+      # output is visible in the Actions log for review.
+      - name: Run npm audit (dev, advisory only)
+        run: npm audit --audit-level=low || true

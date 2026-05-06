@@ -1,0 +1,83 @@
+---
+description: Convenções de uso do Supabase via PostgREST neste projeto
+globs: **/*.{ts,tsx,js,jsx,html,py}
+alwaysApply: false
+---
+
+# Supabase / PostgREST — convenções
+
+Este projeto **não** usa o cliente `@supabase/supabase-js` para suas chamadas reais. Toda integração é via `fetch` direto em `/rest/v1/...`.
+
+## Headers obrigatórios
+
+```ts
+{
+  apikey: env.SUPABASE_SERVICE_KEY,
+  Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+}
+```
+
+No frontend use `import { env } from '../config'`. Em scripts Python, use as constantes do topo do arquivo.
+
+## Filtros de data
+
+Use sempre UTC e a coluna `created_at` (default) com `gte`/`lte`:
+
+```
+created_at=gte.2026-04-01T00:00:00&created_at=lte.2026-05-03T23:59:59
+```
+
+Exceções por tabela:
+- `Meta_ANH` — usa colunas `Inicio` / `fim` (case-sensitive)
+- `vw_historico_distribuicao` — usa `data_distribuicao`
+- `vw_primeira_atribuicao` — usa `primeira_atribuicao`
+
+## Nomes case-sensitive
+
+Tabelas com espaço/maiúscula precisam ser passadas literalmente:
+
+- `Senhas Dash` → `/rest/v1/Senhas%20Dash`
+- `Meta_ANH`, `Perdidos_leads_Cobranca`, `Ganho_leads_cobranca`, `Templates`, `Template_Sugestoes`
+
+Colunas com inicial maiúscula (ex: `Polo`, `Inicio`, `fim`) devem aparecer assim em `select=` e em filtros.
+
+## Padrões de chamada
+
+Frontend (HTML legacy ou React):
+
+```js
+async function supaFetch(path) {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, {
+    headers: {
+      apikey: SUPABASE_SERVICE_KEY,
+      Authorization: `Bearer ${SUPABASE_SERVICE_KEY}`,
+    },
+  });
+  return res.json();
+}
+```
+
+PATCH para atualizar uma linha:
+
+```js
+fetch(`${SUPABASE_URL}/rest/v1/sum_leads_ganhos?id=eq.${id}`, {
+  method: 'PATCH',
+  headers: {
+    apikey: KEY,
+    Authorization: `Bearer ${KEY}`,
+    'Content-Type': 'application/json',
+    Prefer: 'return=minimal',
+  },
+  body: JSON.stringify({ Polo: valor }),
+});
+```
+
+## Não fazer
+
+- Não adicionar `import { createClient } from '@supabase/supabase-js'` — use `fetch`.
+- Não hardcodar URL/chaves em arquivos novos — sempre via `env` (ou `os.environ.get` em Python).
+- Não filtrar datas em horário local — usar UTC explícito (`T00:00:00`).
+
+## Catálogo
+
+A lista completa de tabelas/views consumidas e onde estão em [../../docs/supabase-tabelas.md](../../docs/supabase-tabelas.md).

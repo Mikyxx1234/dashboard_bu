@@ -4,6 +4,20 @@ server {
     root /usr/share/nginx/html;
     index index.html;
 
+    # ---- Security headers (R8) ----
+    # Applied to every response via add_header at server scope.
+    # `always` ensures they're sent on error responses too.
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
+    add_header Permissions-Policy "geolocation=(), microphone=(), camera=()" always;
+    # HSTS: only meaningful behind HTTPS. Safe to keep here; browsers ignore over HTTP.
+    add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
+    # CSP: 'unsafe-inline' on script/style is required for Vite's runtime + Tailwind.
+    # Loosen connect-src/img-src to https: because Supabase URL is injected at runtime
+    # (env-config.js) and may differ per deploy. Tighten once R1 migration lands.
+    add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https: wss:; frame-src 'self'; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'" always;
+
     gzip on;
     gzip_vary on;
     gzip_min_length 1024;
